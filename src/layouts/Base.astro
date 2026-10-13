@@ -49,6 +49,7 @@ const fullTitle = title === 'OrauX' ? "OrauX · Planches d'oraux corrigées" : `
       <div class="wrap foot">
         <p class="foot-brand">Orau<MarqueX /></p>
         <p>Planches d'oraux corrigées · MP · PSI · PC<br />Site en construction, {new Date().getFullYear()}</p>
+        <p class="mention">Les logos appartiennent à leurs écoles respectives. OrauX n'est affilié à aucune école ni à aucun concours.</p>
       </div>
     </footer>
   </body>
@@ -64,5 +65,6 @@ const fullTitle = title === 'OrauX' ? "OrauX · Planches d'oraux corrigées" : `
   .site-footer { margin-top: 96px; background: var(--ink); color: var(--paper) }
   .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px; padding-block: 36px 44px }
   .foot p { margin: 0; font-size: 0.92rem; opacity: 0.85 }
+  .foot .mention { flex-basis: 100%; font-size: 0.8rem; opacity: 0.6 }
   .foot .foot-brand { font-family: var(--display); font-weight: 900; font-size: 2.6rem; letter-spacing: -0.03em; line-height: 1; opacity: 1 }
 </style>

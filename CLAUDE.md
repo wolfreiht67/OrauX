@@ -23,7 +23,7 @@ Maquette de référence (catalogue, filtres, planche) : https://claude.ai/artifa
 - Identité visuelle (refonte du 2026-10-14, demandée car la première version « faisait trop IA ») : l'univers de la copie de prépa. Papier à grands carreaux Seyès, stylo bleu `--bic`, correction au rouge `--red`, surligneur `--marker`, post-it pour les indications, chrono de préparation. En mode sombre : tableau noir à la craie. Les copies (`.sheet`) restent claires dans les deux modes.
 - Polices : Fraunces (titres), Instrument Sans (texte), Caveat (annotations manuscrites).
 - Une couleur par banque : Mines-Ponts orange `--mines`, Centrale-Supélec framboise `--centrale`, X-ENS bleu `--xens`. Les trois banques couvrent MP, PSI et PC.
-- Tuiles des banques : filigrane en fond. Champ `logo` (fichier dans `public/logos/`) ; sans logo, une grande lettre en italique.
+- Tuiles des banques : les vrais logos des écoles en filigrane, teintés à la couleur de la banque par un masque CSS (`public/logos/`, téléchargés depuis Wikimedia Commons le 2026-10-14 : Mines Paris, Ponts, CentraleSupélec, Polytechnique « l'X », ENS-PSL). Placement réglé à l'œil dans le champ `pos` de chaque logo. Les logos sont des marques des écoles : garder la mention de non-affiliation en pied de page.
 - Pas de faux contenu présenté comme réel : tout exemple est marqué « exemple écrit pour la maquette ».
 
 ## Avancement

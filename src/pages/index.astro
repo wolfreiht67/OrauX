@@ -1,11 +1,20 @@
 ---
 import Base from '../layouts/Base.astro';
 
-// logo : chemin d'un fichier placé dans public/logos/. Tant qu'il est vide, une grande lettre sert de filigrane.
+// Logos des écoles (public/logos/, source Wikimedia Commons), en filigrane teinté à la couleur de la banque.
+// ratio : largeur / hauteur du fichier. pos : placement dans la tuile, réglé à l'œil.
 const banques = [
-  { nom: 'Mines-Ponts', cle: 'mines', lettre: 'M', logo: null, filieres: ['MP', 'PSI', 'PC'] },
-  { nom: 'Centrale-Supélec', cle: 'centrale', lettre: 'C', logo: null, filieres: ['MP', 'PSI', 'PC'] },
-  { nom: 'X-ENS', cle: 'xens', lettre: 'X', logo: null, filieres: ['MP', 'PSI', 'PC'] },
+  { nom: 'Mines-Ponts', cle: 'mines', filieres: ['MP', 'PSI', 'PC'], logos: [
+    { src: '/logos/mines-paris.png', ratio: 1960 / 591, pos: 'right: -54%; bottom: -6%; width: 84%; --r: -7deg' },
+    { src: '/logos/ponts.svg', ratio: 115 / 150, pos: 'right: 3%; top: -6%; height: 64%; --r: 8deg' },
+  ] },
+  { nom: 'Centrale-Supélec', cle: 'centrale', filieres: ['MP', 'PSI', 'PC'], logos: [
+    { src: '/logos/centralesupelec.svg', ratio: 98 / 50, pos: 'right: -20%; bottom: -12%; width: 100%; --r: -8deg' },
+  ] },
+  { nom: 'X-ENS', cle: 'xens', filieres: ['MP', 'PSI', 'PC'], logos: [
+    { src: '/logos/polytechnique.png', ratio: 1340 / 2328, pos: 'right: -4%; top: -14%; height: 128%; --r: 6deg' },
+    { src: '/logos/ens-psl.png', ratio: 960 / 405, pos: 'left: 16%; top: 42%; width: 42%; --r: -6deg' },
+  ] },
 ];
 
 // Chapitres de maths uniquement.
@@ -74,9 +83,9 @@ const temps = [
     <ul class="banques">
       {banques.map((b) => (
         <li class={`banque ${b.cle}`}>
-          {b.logo
-            ? <img class="filigrane-logo" src={b.logo} alt="" />
-            : <span class="filigrane" aria-hidden="true">{b.lettre}</span>}
+          {b.logos.map((l) => (
+            <span class="filigrane" aria-hidden="true" style={`--logo: url(${l.src}); aspect-ratio: ${l.ratio}; ${l.pos}`} />
+          ))}
           <p class="banque-kicker">Banque</p>
           <h3>{b.nom}</h3>
           <ul class="filieres" aria-label="Filières">
@@ -171,9 +180,9 @@ const temps = [
   .banque.mines { --c: var(--mines) }
   .banque.centrale { --c: var(--centrale) }
   .banque.xens { --c: var(--xens) }
-  .banque > :not(.filigrane, .filigrane-logo) { position: relative }
-  .filigrane { position: absolute; right: -0.04em; bottom: -0.3em; font-family: var(--display); font-style: italic; font-weight: 900; font-size: 13rem; line-height: 1; color: var(--c); opacity: 0.22; pointer-events: none }
-  .filigrane-logo { position: absolute; right: -16px; bottom: -16px; width: 62%; opacity: 0.14; pointer-events: none }
+  .banque > :not(.filigrane) { position: relative }
+  .filigrane { position: absolute; background: var(--c); opacity: 0.3; pointer-events: none; transform: rotate(var(--r, 0deg));
+    -webkit-mask: var(--logo) no-repeat center / contain; mask: var(--logo) no-repeat center / contain }
   .banque-kicker { margin: 0; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
   .banque h3 { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1.05; letter-spacing: -0.02em; margin: 4px 0 auto }
   .filieres { list-style: none; display: flex; gap: 8px; padding: 0; margin: 30px 0 0 }
