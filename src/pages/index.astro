@@ -1,0 +1,93 @@
+---
+import Base from '../layouts/Base.astro';
+
+const concours = [
+  { nom: 'Mines-Ponts', classe: 'mines', filieres: 'MP · PSI · PC' },
+  { nom: 'Centrale-Supélec', classe: 'centrale', filieres: 'MP · PSI · PC' },
+  { nom: 'X-ENS', classe: 'xens', filieres: 'MP · PC' },
+];
+
+const etapes = [
+  { titre: 'Énoncé', texte: "La planche telle qu'elle tombe à l'oral, avec le concours, la filière, l'année et la durée de préparation." },
+  { titre: 'Indication', texte: "Un coup de pouce, caché par défaut, pour débloquer la planche sans tout dévoiler." },
+  { titre: 'Correction', texte: "Une correction rédigée et relue, à ouvrir une fois qu'on a vraiment cherché." },
+];
+---
+
+<Base>
+  <section class="hero wrap">
+    <p class="kicker">Préparer les oraux de prépa</p>
+    <h1>Les planches d'oraux des concours, <em>corrigées</em>.</h1>
+    <p class="lead">
+      Des exercices d'oraux classés par concours, filière, matière et année, avec une indication
+      et une correction détaillée. Pour s'entraîner comme le jour J.
+    </p>
+    <p class="status"><span class="dot" aria-hidden="true"></span>Le catalogue ouvre bientôt</p>
+  </section>
+
+  <section class="wrap block" aria-labelledby="concours-titre">
+    <h2 id="concours-titre">Les concours couverts</h2>
+    <ul class="concours">
+      {concours.map((c) => (
+        <li class="card">
+          <span class={`tag ${c.classe}`}>{c.nom}</span>
+          <p>{c.filieres}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="wrap block" aria-labelledby="planche-titre">
+    <h2 id="planche-titre">Une planche, trois temps</h2>
+    <ol class="etapes">
+      {etapes.map((e, i) => (
+        <li class="card">
+          <span class="num">{String(i + 1).padStart(2, '0')}</span>
+          <h3>{e.titre}</h3>
+          <p>{e.texte}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="wrap block" aria-labelledby="exemple-titre">
+    <h2 id="exemple-titre">Un exemple</h2>
+    <article class="sheet">
+      <div class="meta">
+        <span class="tag mines">Mines-Ponts</span>
+        <span class="tag">MP</span>
+        <span class="plain">Maths · 30 min</span>
+      </div>
+      <h3>Signe du déterminant</h3>
+      <p>Soit A ∈ M<sub>n</sub>(ℝ) telle que A³ = A + I<sub>n</sub>. Montrer que det A &gt; 0.</p>
+      <p class="note">Exemple écrit pour la maquette. Les vraies planches arrivent avec le catalogue.</p>
+    </article>
+  </section>
+</Base>
+
+<style>
+  .hero { padding-block: 56px 24px }
+  .kicker { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin: 0 0 12px }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.08; letter-spacing: -0.025em; margin: 0; max-width: 18ch; text-wrap: balance }
+  h1 em { font-style: normal; color: var(--accent) }
+  .lead { font-size: 1.12rem; color: var(--ink-soft); max-width: 58ch; margin: 18px 0 0 }
+  .status { display: inline-flex; align-items: center; gap: 10px; margin: 24px 0 0; font-family: var(--display); font-weight: 500; font-size: 0.95rem; background: var(--accent-wash); color: var(--accent); padding: 8px 14px; border-radius: 999px }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor }
+
+  .block { margin-top: 48px }
+  h2 { font-family: var(--mono); font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin: 0 0 14px }
+  .card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; min-width: 0 }
+  .card p { margin: 6px 0 0; color: var(--ink-soft); font-size: 0.95rem }
+
+  .concours, .etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)) }
+  .concours p { font-family: var(--mono); font-size: 0.85rem }
+  .num { font-family: var(--mono); font-size: 0.78rem; color: var(--accent) }
+  .etapes h3 { font-family: var(--display); font-weight: 600; font-size: 1.15rem; margin: 4px 0 0 }
+
+  .sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: clamp(18px, 4vw, 32px); max-width: 760px }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+  .plain { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft) }
+  .sheet h3 { font-family: var(--display); font-weight: 700; font-size: 1.45rem; margin: 12px 0 8px }
+  .sheet p { margin: 0 }
+  .note { margin-top: 16px !important; font-family: var(--mono); font-size: 0.75rem; color: var(--ink-soft) }
+</style>

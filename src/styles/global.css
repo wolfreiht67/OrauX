@@ -1,0 +1,47 @@
+/* Identité OrauX : papier clair, encre bleue des copies, une couleur par concours. */
+:root {
+  --paper: #f5f6fa;
+  --sheet: #ffffff;
+  --ink: #1a2138;
+  --ink-soft: #5a6380;
+  --rule: #dde1ec;
+  --accent: #2443b8;
+  --accent-wash: #e6ebfb;
+  --mines: #8a5a12; --mines-wash: #f6ecd9;
+  --centrale: #8c1d3a; --centrale-wash: #f7e3e9;
+  --xens: #146b5a; --xens-wash: #dcf1eb;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #11141f; --sheet: #181c2a; --ink: #e6e9f3; --ink-soft: #9aa2bd; --rule: #2a3046;
+    --accent: #8ea4ff; --accent-wash: #232c4e;
+    --mines: #e2b469; --mines-wash: #33291a;
+    --centrale: #f08aa5; --centrale-wash: #3a1f29;
+    --xens: #6fd3bc; --xens-wash: #173430;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box }
+html { -webkit-text-size-adjust: 100% }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.55;
+}
+a { color: var(--accent) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px }
+
+.tag { font-family: var(--mono); font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--accent-wash); color: var(--accent) }
+.tag.mines { background: var(--mines-wash); color: var(--mines) }
+.tag.centrale { background: var(--centrale-wash); color: var(--centrale) }
+.tag.xens { background: var(--xens-wash); color: var(--xens) }
