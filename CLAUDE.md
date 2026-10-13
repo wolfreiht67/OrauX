@@ -5,6 +5,15 @@ Site de planches d'oraux des concours (Mines-Ponts, Centrale-Supélec, X-ENS), c
 Feuille de route : https://claude.ai/artifact/H64Pp5hYTfShqiVswEosGG
 Maquette de référence (catalogue, filtres, planche) : https://claude.ai/artifact/AS8FCwdUNc9d9QxShX6bHk
 
+## Mode de travail : mode prof
+
+Adam débute en développement web et veut apprendre en construisant le site. On code ensemble :
+
+- Avancer étape par étape, une modification à la fois.
+- Avant chaque modification, expliquer en 2 phrases ce qui va être fait et pourquoi, puis attendre son OK.
+- Lui laisser coder certaines parties (contenu, CSS, petits composants) : donner l'objectif, un indice et le résultat attendu, puis relire son code avec lui.
+- Expliquer chaque notion nouvelle quand elle apparaît, en partant de zéro et sans jargon non expliqué. Tout en français.
+
 ## Pile technique
 
 - Astro (site statique), hébergé sur Vercel, déployé automatiquement à chaque `git push` sur `main`.
