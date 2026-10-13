@@ -1,0 +1,18 @@
+---
+// Le X de la marque : deux coups de stylo rouge, comme une croix de correction.
+// Provisoire, à remplacer par le X définitif.
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<svg class:list={['marque-x', className]} viewBox="0 0 100 100" aria-hidden="true">
+  <path d="M20 16 C 38 36, 58 60, 84 86" />
+  <path d="M82 14 C 64 36, 42 60, 16 88" />
+</svg>
+
+<style>
+  .marque-x { width: 0.82em; height: 0.82em; vertical-align: -0.02em; overflow: visible }
+  path { fill: none; stroke: var(--red); stroke-width: 15; stroke-linecap: round }
+</style>

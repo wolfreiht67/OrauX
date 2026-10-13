@@ -1,93 +1,211 @@
 ---
 import Base from '../layouts/Base.astro';
 
-const concours = [
-  { nom: 'Mines-Ponts', classe: 'mines', filieres: 'MP · PSI · PC' },
-  { nom: 'Centrale-Supélec', classe: 'centrale', filieres: 'MP · PSI · PC' },
-  { nom: 'X-ENS', classe: 'xens', filieres: 'MP · PC' },
+// logo : chemin d'un fichier placé dans public/logos/. Tant qu'il est vide, une grande lettre sert de filigrane.
+const banques = [
+  { nom: 'Mines-Ponts', cle: 'mines', lettre: 'M', logo: null, filieres: ['MP', 'PSI', 'PC'] },
+  { nom: 'Centrale-Supélec', cle: 'centrale', lettre: 'C', logo: null, filieres: ['MP', 'PSI', 'PC'] },
+  { nom: 'X-ENS', cle: 'xens', lettre: 'X', logo: null, filieres: ['MP', 'PSI', 'PC'] },
 ];
 
-const etapes = [
-  { titre: 'Énoncé', texte: "La planche telle qu'elle tombe à l'oral, avec le concours, la filière, l'année et la durée de préparation." },
-  { titre: 'Indication', texte: "Un coup de pouce, caché par défaut, pour débloquer la planche sans tout dévoiler." },
-  { titre: 'Correction', texte: "Une correction rédigée et relue, à ouvrir une fois qu'on a vraiment cherché." },
+const chapitres = [
+  'Réduction des endomorphismes', 'Séries entières', 'Mécanique du point', 'Probabilités',
+  'Thermodynamique', 'Intégrales à paramètre', 'Électromagnétisme', 'Espaces euclidiens',
+  'Chimie des solutions', 'Équations différentielles', 'Optique ondulatoire', 'Topologie',
+];
+
+const temps = [
+  { cle: 'enonce', objet: 'sheet', titre: 'Énoncé', texte: "La planche telle qu'elle tombe à l'oral, avec le concours, la filière, l'année et la durée de préparation." },
+  { cle: 'indic', objet: 'postit', titre: 'Indication', texte: 'Un coup de pouce, caché par défaut, pour se débloquer sans tout dévoiler.' },
+  { cle: 'correction', objet: 'sheet', titre: 'Correction', texte: "Rédigée au propre et relue, à ouvrir une fois qu'on a vraiment cherché." },
 ];
 ---
 
 <Base>
-  <section class="hero wrap">
-    <p class="kicker">Préparer les oraux de prépa</p>
-    <h1>Les planches d'oraux des concours, <em>corrigées</em>.</h1>
-    <p class="lead">
-      Des exercices d'oraux classés par concours, filière, matière et année, avec une indication
-      et une correction détaillée. Pour s'entraîner comme le jour J.
-    </p>
-    <p class="status"><span class="dot" aria-hidden="true"></span>Le catalogue ouvre bientôt</p>
+  <section class="hero seyes">
+    <div class="wrap hero-grid">
+      <div class="hero-text">
+        <p class="hand kicker">« Vous avez 30 minutes de préparation. »</p>
+        <h1>
+          Les planches d'oraux de prépa,
+          <span class="circled">corrigées<svg viewBox="0 0 200 80" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M14 44 C 10 18, 70 6, 120 8 C 172 10, 196 26, 190 46 C 184 66, 120 74, 76 70 C 30 66, 4 56, 12 34 C 18 20, 46 12, 66 10" /></svg></span>.
+        </h1>
+        <p class="lead">
+          Mines-Ponts, Centrale-Supélec, X-ENS. Des exercices d'oral classés par filière et par chapitre, avec une
+          <span class="marker">indication</span> pour se débloquer et une correction rédigée au propre.
+        </p>
+        <div class="cta">
+          <span class="stamp">Catalogue : ouverture prochaine</span>
+          <a class="see" href="#banques">Voir les banques ↓</a>
+        </div>
+      </div>
+
+      <div class="desk">
+        <div class="chrono" role="timer" aria-label="Chronomètre de préparation">
+          <span class="rec" aria-hidden="true"></span>Préparation <b id="chrono">30:00</b>
+        </div>
+        <article class="sheet planche">
+          <span class="exemple">Exemple</span>
+          <p class="planche-meta"><span class="dot" aria-hidden="true"></span>Mines-Ponts · MP · Maths</p>
+          <h2>Signe du déterminant</h2>
+          <p>Soit A ∈ M<sub>n</sub>(ℝ) telle que A³ = A + I<sub>n</sub>.<br />Montrer que det A &gt; 0.</p>
+          <p class="hand red-note">α &gt; 1 et |β|² = 1/α donc det A &gt; 0 ✓</p>
+        </article>
+        <aside class="postit indication">
+          <span class="hand">Indication</span>
+          <p class="hand">Regarde les racines de X³ − X − 1…</p>
+        </aside>
+      </div>
+    </div>
   </section>
 
-  <section class="wrap block" aria-labelledby="concours-titre">
-    <h2 id="concours-titre">Les concours couverts</h2>
-    <ul class="concours">
-      {concours.map((c) => (
-        <li class="card">
-          <span class={`tag ${c.classe}`}>{c.nom}</span>
-          <p>{c.filieres}</p>
+  <div class="ruban" aria-hidden="true">
+    <div class="ruban-track">
+      {[...chapitres, ...chapitres].map((c) => <span>{c}<i>✶</i></span>)}
+    </div>
+  </div>
+
+  <section class="wrap section" id="banques" aria-labelledby="banques-titre">
+    <div class="section-head">
+      <h2 id="banques-titre">Trois banques, <em class="marker">trois filières</em></h2>
+      <p class="hand note">MP, PSI et PC partout !</p>
+    </div>
+    <ul class="banques">
+      {banques.map((b) => (
+        <li class={`banque ${b.cle}`}>
+          {b.logo
+            ? <img class="filigrane-logo" src={b.logo} alt="" />
+            : <span class="filigrane" aria-hidden="true">{b.lettre}</span>}
+          <p class="banque-kicker">Banque</p>
+          <h3>{b.nom}</h3>
+          <ul class="filieres" aria-label="Filières">
+            {b.filieres.map((f) => <li>{f}</li>)}
+          </ul>
         </li>
       ))}
     </ul>
   </section>
 
-  <section class="wrap block" aria-labelledby="planche-titre">
-    <h2 id="planche-titre">Une planche, trois temps</h2>
-    <ol class="etapes">
-      {etapes.map((e, i) => (
-        <li class="card">
-          <span class="num">{String(i + 1).padStart(2, '0')}</span>
-          <h3>{e.titre}</h3>
-          <p>{e.texte}</p>
+  <section class="wrap section" aria-labelledby="temps-titre">
+    <div class="section-head">
+      <h2 id="temps-titre">Une planche, <em class="marker">trois temps</em></h2>
+    </div>
+    <ol class="temps">
+      {temps.map((t, i) => (
+        <li class={`temps-item ${t.objet} ${t.cle}`}>
+          <span class="num" aria-hidden="true">{i + 1}.</span>
+          <h3>{t.titre}</h3>
+          <p>{t.texte}</p>
+          {t.cle === 'correction' && <span class="hand annot" aria-hidden="true">Rédigé et relu ✓</span>}
         </li>
       ))}
     </ol>
   </section>
-
-  <section class="wrap block" aria-labelledby="exemple-titre">
-    <h2 id="exemple-titre">Un exemple</h2>
-    <article class="sheet">
-      <div class="meta">
-        <span class="tag mines">Mines-Ponts</span>
-        <span class="tag">MP</span>
-        <span class="plain">Maths · 30 min</span>
-      </div>
-      <h3>Signe du déterminant</h3>
-      <p>Soit A ∈ M<sub>n</sub>(ℝ) telle que A³ = A + I<sub>n</sub>. Montrer que det A &gt; 0.</p>
-      <p class="note">Exemple écrit pour la maquette. Les vraies planches arrivent avec le catalogue.</p>
-    </article>
-  </section>
 </Base>
 
+<script>
+  // Chrono de préparation : décompte de 30:00, puis recommence.
+  const el = document.getElementById('chrono');
+  if (el) {
+    let s = 30 * 60;
+    setInterval(() => {
+      s = s > 0 ? s - 1 : 30 * 60;
+      el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }, 1000);
+  }
+</script>
+
 <style>
-  .hero { padding-block: 56px 24px }
-  .kicker { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin: 0 0 12px }
-  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.08; letter-spacing: -0.025em; margin: 0; max-width: 18ch; text-wrap: balance }
-  h1 em { font-style: normal; color: var(--accent) }
-  .lead { font-size: 1.12rem; color: var(--ink-soft); max-width: 58ch; margin: 18px 0 0 }
-  .status { display: inline-flex; align-items: center; gap: 10px; margin: 24px 0 0; font-family: var(--display); font-weight: 500; font-size: 0.95rem; background: var(--accent-wash); color: var(--accent); padding: 8px 14px; border-radius: 999px }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor }
+  /* ---------- Accroche ---------- */
+  .hero { border-bottom: 2px solid var(--ink); padding-block: 52px 88px }
+  .hero-grid { display: grid; gap: 48px; align-items: center }
+  @media (min-width: 900px) { .hero-grid { grid-template-columns: 1.15fr 1fr } }
 
-  .block { margin-top: 48px }
-  h2 { font-family: var(--mono); font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin: 0 0 14px }
-  .card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; min-width: 0 }
-  .card p { margin: 6px 0 0; color: var(--ink-soft); font-size: 0.95rem }
+  .kicker { display: inline-block; margin: 0 0 10px; color: var(--bic); font-size: 1.7rem; line-height: 1.1; transform: rotate(-2deg) }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.5rem, 7vw, 4.7rem); line-height: 1.02; letter-spacing: -0.035em; margin: 0; text-wrap: balance }
+  .circled { position: relative; display: inline-block; margin-left: 0.12em; font-style: italic; font-weight: 700 }
+  .circled svg { position: absolute; left: -6%; top: -12%; width: 112%; height: 130%; overflow: visible; pointer-events: none }
+  .circled path { fill: none; stroke: var(--red); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0 }
+  .lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 34em; margin: 26px 0 0 }
 
-  .concours, .etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)) }
-  .concours p { font-family: var(--mono); font-size: 0.85rem }
-  .num { font-family: var(--mono); font-size: 0.78rem; color: var(--accent) }
-  .etapes h3 { font-family: var(--display); font-weight: 600; font-size: 1.15rem; margin: 4px 0 0 }
+  .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; margin-top: 32px }
+  .stamp { display: inline-block; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); border: 2.5px solid var(--red); border-radius: 6px; padding: 8px 14px; transform: rotate(-3deg); background: color-mix(in srgb, var(--paper) 80%, transparent) }
+  .see { font-weight: 600; color: var(--ink); text-decoration: underline wavy var(--red); text-underline-offset: 6px }
 
-  .sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: clamp(18px, 4vw, 32px); max-width: 760px }
-  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
-  .plain { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft) }
-  .sheet h3 { font-family: var(--display); font-weight: 700; font-size: 1.45rem; margin: 12px 0 8px }
-  .sheet p { margin: 0 }
-  .note { margin-top: 16px !important; font-family: var(--mono); font-size: 0.75rem; color: var(--ink-soft) }
+  /* La table : la copie, le post-it et le chrono. */
+  .desk { position: relative; display: flex; flex-direction: column; padding-top: 18px; max-width: 470px; width: 100%; justify-self: center }
+  .planche { position: relative; padding: 30px 26px 52px 58px; transform: rotate(-2deg);
+    background-image: linear-gradient(90deg, transparent 40px, #f2a3a3 40px, #f2a3a3 42px, transparent 42px) }
+  .planche h2 { font-family: var(--display); font-weight: 700; font-size: 1.65rem; line-height: 1.15; margin: 6px 0 10px }
+  .planche p { margin: 0 }
+  .planche-meta { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft) }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #e8871e }
+  .red-note { margin-top: 14px !important; color: var(--red); font-size: 1.5rem; line-height: 1.15; transform: rotate(-1.5deg) }
+  .exemple { position: absolute; top: 12px; right: 14px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed currentColor; border-radius: 3px; padding: 1px 6px }
+
+  .indication { align-self: flex-end; width: min(210px, 62%); margin-top: -40px; margin-right: -6px; padding: 14px 16px 18px; transform: rotate(4deg); position: relative }
+  .indication span { display: block; font-size: 1.15rem; text-decoration: underline }
+  .indication p { margin: 4px 0 0; font-size: 1.4rem; line-height: 1.15 }
+
+  .chrono { position: absolute; top: 0; left: -8px; z-index: 2; display: flex; align-items: center; gap: 8px; background: var(--ink); color: var(--paper); font-size: 0.8rem; font-weight: 600; padding: 6px 13px; border-radius: 999px; transform: rotate(-4deg) }
+  .chrono b { font-size: 1rem; font-variant-numeric: tabular-nums }
+  .rec { width: 8px; height: 8px; border-radius: 50%; background: #ff5a5a }
+
+  /* ---------- Ruban des chapitres ---------- */
+  .ruban { position: relative; z-index: 1; width: calc(100% + 80px); margin: -22px 0 0 -40px; overflow: hidden; background: var(--ink); color: var(--paper); padding-block: 14px; transform: rotate(-1.5deg) }
+  .ruban-track { display: flex; width: max-content }
+  .ruban span { display: flex; align-items: center; gap: 30px; padding-right: 30px; white-space: nowrap; font-family: var(--display); font-style: italic; font-size: 1.35rem }
+  .ruban i { font-style: normal; color: var(--marker) }
+
+  /* ---------- Sections ---------- */
+  .section { margin-top: 96px }
+  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; margin-bottom: 34px }
+  .section-head h2 { font-family: var(--display); font-weight: 800; font-size: clamp(2rem, 4.6vw, 3.1rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0 }
+  .section-head em { font-style: italic; font-weight: 600 }
+  .note { margin: 0; color: var(--red); font-size: 1.7rem; transform: rotate(-3deg) }
+
+  /* Les banques : tuiles colorées, filigrane de l'école en fond. */
+  .banques { list-style: none; margin: 0; padding: 0; display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)) }
+  .banque { --c: var(--bic); position: relative; overflow: hidden; display: flex; flex-direction: column; min-height: 240px; padding: 22px 24px 26px; border: 2px solid var(--ink); border-radius: 14px; background: color-mix(in srgb, var(--c) 13%, var(--paper)); box-shadow: 6px 6px 0 var(--c) }
+  .banque.mines { --c: var(--mines) }
+  .banque.centrale { --c: var(--centrale) }
+  .banque.xens { --c: var(--xens) }
+  .banque > :not(.filigrane, .filigrane-logo) { position: relative }
+  .filigrane { position: absolute; right: -0.04em; bottom: -0.3em; font-family: var(--display); font-style: italic; font-weight: 900; font-size: 13rem; line-height: 1; color: var(--c); opacity: 0.22; pointer-events: none }
+  .filigrane-logo { position: absolute; right: -16px; bottom: -16px; width: 62%; opacity: 0.14; pointer-events: none }
+  .banque-kicker { margin: 0; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
+  .banque h3 { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1.05; letter-spacing: -0.02em; margin: 4px 0 auto }
+  .filieres { list-style: none; display: flex; gap: 8px; padding: 0; margin: 30px 0 0 }
+  .filieres li { font-weight: 700; font-size: 0.9rem; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper) }
+
+  /* Les trois temps : la copie, le post-it, la copie corrigée. */
+  .temps { list-style: none; margin: 0; padding: 0; display: grid; gap: 36px 28px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); align-items: start }
+  .temps-item { position: relative; padding: 30px 24px 28px }
+  .temps-item h3 { font-family: var(--display); font-weight: 700; font-size: 1.55rem; margin: 0 0 6px }
+  .temps-item p { margin: 0; color: var(--ink-soft) }
+  .num { position: absolute; top: -26px; left: -8px; font-family: var(--hand); font-weight: 700; font-size: 3.2rem; line-height: 1; color: #e03131; transform: rotate(-8deg) }
+  .enonce { transform: rotate(-1.2deg) }
+  .indic { transform: rotate(1.5deg) }
+  .indic h3 { color: #2b2410 }
+  .indic p { color: #4a4020 }
+  .correction { transform: rotate(-0.6deg); border-left: 4px solid #e03131 }
+  .annot { display: inline-block; margin-top: 12px; color: #e03131; font-size: 1.4rem; transform: rotate(-3deg) }
+
+  /* ---------- Mouvements ---------- */
+  @media (prefers-reduced-motion: no-preference) {
+    .circled path { stroke-dashoffset: 1; animation: trace 0.9s 0.5s ease-out forwards }
+    .planche { animation: poser 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both }
+    .indication { animation: coller 0.6s 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both }
+    .rec { animation: pulse 1.2s ease-in-out infinite }
+    .ruban-track { animation: defile 60s linear infinite }
+    .banque { transition: transform 0.2s ease, box-shadow 0.2s ease }
+    .banque:hover { transform: translate(-3px, -3px) rotate(-0.6deg); box-shadow: 10px 10px 0 var(--c) }
+    .temps-item { transition: transform 0.2s ease }
+    .temps-item:hover { transform: rotate(0deg) translateY(-4px) }
+  }
+  @keyframes trace { to { stroke-dashoffset: 0 } }
+  @keyframes poser { from { opacity: 0; transform: translateY(24px) rotate(-7deg) } }
+  @keyframes coller { from { opacity: 0; transform: translateY(-18px) rotate(14deg) scale(1.08) } }
+  @keyframes pulse { 50% { opacity: 0.25 } }
+  @keyframes defile { to { transform: translateX(-50%) } }
 </style>

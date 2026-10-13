@@ -1,47 +1,97 @@
-/* Identité OrauX : papier clair, encre bleue des copies, une couleur par concours. */
+/* Identité OrauX : la copie de prépa. Papier à grands carreaux, stylo bleu, correction au rouge,
+   surligneur jaune, post-it. En mode sombre, la page devient un tableau noir à la craie. */
 :root {
-  --paper: #f5f6fa;
-  --sheet: #ffffff;
-  --ink: #1a2138;
-  --ink-soft: #5a6380;
-  --rule: #dde1ec;
-  --accent: #2443b8;
-  --accent-wash: #e6ebfb;
-  --mines: #8a5a12; --mines-wash: #f6ecd9;
-  --centrale: #8c1d3a; --centrale-wash: #f7e3e9;
-  --xens: #146b5a; --xens-wash: #dcf1eb;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --paper: #fbf7ee;
+  --paper-deep: #f2ead8;
+  --sheet: #fffdf8;
+  --ink: #1a1a2e;
+  --ink-soft: #55566b;
+  --line: #d9e0f3;
+  --line-strong: #b9c5ea;
+  --bic: #1d3fbf;
+  --red: #e03131;
+  --marker: #ffe066;
+  --postit: #ffe873;
+  --mines: #e8871e;
+  --centrale: #d6336c;
+  --xens: #1d4ed8;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
   color-scheme: light;
 }
+
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #11141f; --sheet: #181c2a; --ink: #e6e9f3; --ink-soft: #9aa2bd; --rule: #2a3046;
-    --accent: #8ea4ff; --accent-wash: #232c4e;
-    --mines: #e2b469; --mines-wash: #33291a;
-    --centrale: #f08aa5; --centrale-wash: #3a1f29;
-    --xens: #6fd3bc; --xens-wash: #173430;
+    --paper: #1f2b27;
+    --paper-deep: #18221e;
+    --ink: #f1efe6;
+    --ink-soft: #b5bfb4;
+    --line: rgba(241, 239, 230, 0.05);
+    --line-strong: rgba(241, 239, 230, 0.09);
+    --bic: #a9c1ff;
+    --red: #ff8f87;
+    --marker: #e9c93a;
+    --mines: #ffb366;
+    --centrale: #ff7aa8;
+    --xens: #8fb0ff;
     color-scheme: dark;
   }
 }
 
 * { box-sizing: border-box }
-html { -webkit-text-size-adjust: 100% }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto } }
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--body);
   font-size: 17px;
-  line-height: 1.55;
+  line-height: 1.6;
+  overflow-x: hidden;
 }
-a { color: var(--accent) }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+a { color: var(--bic) }
+:focus-visible { outline: 3px solid var(--bic); outline-offset: 3px; border-radius: 4px }
 
-.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px }
+.wrap { max-width: 1160px; margin: 0 auto; padding-inline: 20px }
 
-.tag { font-family: var(--mono); font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--accent-wash); color: var(--accent) }
-.tag.mines { background: var(--mines-wash); color: var(--mines) }
-.tag.centrale { background: var(--centrale-wash); color: var(--centrale) }
-.tag.xens { background: var(--xens-wash); color: var(--xens) }
+/* Feuille à grands carreaux (Seyès) : lignes fines tous les 8px, carreaux de 32px. */
+.seyes {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--line-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-strong) 1px, transparent 1px),
+    linear-gradient(var(--line) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px, 100% 8px;
+}
+
+/* Une copie posée sur la table : reste claire même sur le tableau noir. */
+.sheet {
+  --ink: #1a1a2e;
+  --ink-soft: #55566b;
+  --red: #e03131;
+  --bic: #1d3fbf;
+  --marker: #ffe066;
+  color: var(--ink);
+  background: var(--sheet);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 14px 30px -12px rgba(26, 26, 46, 0.35);
+}
+
+.postit {
+  color: #2b2410;
+  background: var(--postit);
+  box-shadow: 0 12px 22px -12px rgba(60, 45, 0, 0.55);
+}
+
+.hand { font-family: var(--hand); font-weight: 700 }
+
+/* Coup de surligneur, légèrement de travers. */
+.marker {
+  background: linear-gradient(100deg, transparent 0.2em, color-mix(in srgb, var(--marker) 75%, transparent) 0.3em, color-mix(in srgb, var(--marker) 60%, transparent) 95%, transparent);
+  padding-inline: 0.15em;
+  border-radius: 0.3em 0.1em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}

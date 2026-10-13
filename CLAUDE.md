@@ -19,8 +19,11 @@ Maquette de référence (catalogue, filtres, planche) : https://claude.ai/artifa
 
 ## Décisions
 
-- Nom du site : **OrauX** (le X en bleu `--accent`).
-- Identité visuelle reprise de la maquette : papier `#f5f6fa`, encre bleue `#2443b8`, une couleur par concours (Mines ocre, Centrale bordeaux, X-ENS vert). Polices Bricolage Grotesque (titres), Source Serif 4 (texte), JetBrains Mono (étiquettes).
+- Nom du site : **OrauX**. Le X est un composant à part (`src/components/MarqueX.astro`), actuellement deux coups de stylo rouge ; il doit pouvoir être remplacé sans toucher au reste.
+- Identité visuelle (refonte du 2026-10-14, demandée car la première version « faisait trop IA ») : l'univers de la copie de prépa. Papier à grands carreaux Seyès, stylo bleu `--bic`, correction au rouge `--red`, surligneur `--marker`, post-it pour les indications, chrono de préparation. En mode sombre : tableau noir à la craie. Les copies (`.sheet`) restent claires dans les deux modes.
+- Polices : Fraunces (titres), Instrument Sans (texte), Caveat (annotations manuscrites).
+- Une couleur par banque : Mines-Ponts orange `--mines`, Centrale-Supélec framboise `--centrale`, X-ENS bleu `--xens`. Les trois banques couvrent MP, PSI et PC.
+- Tuiles des banques : filigrane en fond. Champ `logo` (fichier dans `public/logos/`) ; sans logo, une grande lettre en italique.
 - Pas de faux contenu présenté comme réel : tout exemple est marqué « exemple écrit pour la maquette ».
 
 ## Avancement
