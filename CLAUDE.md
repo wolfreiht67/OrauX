@@ -25,7 +25,13 @@ Maquette de référence (catalogue, filtres, planche) : https://claude.ai/artifa
 
 ## Avancement
 
-- Semaine 1 (squelette en ligne) : site Astro + page d'accueil. Reste à pousser sur GitHub et relier à Vercel.
+- Semaine 1 (squelette en ligne) : terminée le 2026-10-14. Site Astro + page d'accueil, en ligne.
+- Prochaine étape, semaine 2 : format d'un exercice (un fichier Markdown par exercice) et KaTeX.
+
+## En ligne
+
+- Site : https://orau-x.vercel.app
+- Code : https://github.com/wolfreiht67/oraux (branche `main`, déployée par Vercel)
 
 ## Développement
 
