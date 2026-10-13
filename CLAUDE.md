@@ -34,7 +34,7 @@ Maquette de référence (catalogue, filtres, planche) : https://claude.ai/artifa
 ## En ligne
 
 - Site : https://orau-x.vercel.app
-- Code : https://github.com/wolfreiht67/oraux (branche `main`, déployée par Vercel)
+- Code : https://github.com/wolfreiht67/OrauX (branche `main`, déployée par Vercel)
 
 ## Développement
 
