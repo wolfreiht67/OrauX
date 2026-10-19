@@ -1,0 +1,55 @@
+---
+// La liste de tous les exercices. Les filtres (banque, filière, chapitre) arrivent en semaine 3.
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+const exercices = (await getCollection('exercices')).sort((a, b) => a.data.titre.localeCompare(b.data.titre, 'fr'));
+const couleur = { 'Mines-Ponts': 'mines', 'Centrale-Supélec': 'centrale', 'X-ENS': 'xens' };
+---
+
+<Base title="Exercices">
+  <section class="wrap section">
+    <div class="section-head">
+      <h1>Les <em class="marker">exercices</em></h1>
+      <p class="hand note">Les vraies planches arrivent bientôt !</p>
+    </div>
+    <ul class="liste">
+      {exercices.map((exo) => (
+        <li>
+          <a class={`sheet carte ${couleur[exo.data.banque]}`} href={`/exercices/${exo.id}`}>
+            {exo.data.exemple && <span class="exemple">Exemple</span>}
+            <span class="meta"><span class="dot" aria-hidden="true"></span>{exo.data.banque} · {exo.data.filiere}</span>
+            <span class="titre">{exo.data.titre}</span>
+            <span class="chapitre">{exo.data.chapitre} · {exo.data.duree} min</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    <p class="proposer">Vous avez passé un oral ? <a href="/proposer">Proposez votre exercice</a> avec sa correction.</p>
+  </section>
+</Base>
+
+<style>
+  .section { margin-top: 56px }
+  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; margin-bottom: 34px }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0 }
+  h1 em { font-style: italic; font-weight: 600 }
+  .note { margin: 0; color: var(--red); font-size: 1.6rem; transform: rotate(-3deg) }
+
+  .liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) }
+  .carte { position: relative; display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 22px 22px 20px; text-decoration: none; border-top: 5px solid var(--c) }
+  .carte.mines { --c: #e8871e }
+  .carte.centrale { --c: #d6336c }
+  .carte.xens { --c: #1d4ed8 }
+  .meta { display: flex; align-items: center; gap: 8px; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft) }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c) }
+  .titre { font-family: var(--display); font-weight: 700; font-size: 1.45rem; line-height: 1.15; color: var(--ink) }
+  .chapitre { font-size: 0.9rem; color: var(--ink-soft) }
+  .exemple { position: absolute; top: 10px; right: 12px; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed currentColor; border-radius: 3px; padding: 1px 6px }
+  .proposer { margin-top: 40px; font-weight: 500 }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .carte { transition: transform 0.2s ease }
+    .carte:hover { transform: translateY(-4px) rotate(-0.5deg) }
+  }
+</style>

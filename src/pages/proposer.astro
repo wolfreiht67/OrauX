@@ -1,0 +1,93 @@
+---
+// Page « Proposer un exercice » : un élève remplit le formulaire, et son logiciel de messagerie
+// s'ouvre avec un e-mail déjà rédigé. Le site étant statique, il n'enregistre rien lui-même.
+import Base from '../layouts/Base.astro';
+
+// L'adresse qui reçoit les propositions. Tant qu'elle est vide, le bouton d'envoi reste désactivé.
+const ADRESSE = '';
+---
+
+<Base title="Proposer un exercice" description="Envoyez un exercice d'oral que vous avez passé, avec sa correction.">
+  <div class="seyes page">
+    <div class="wrap colonne">
+      <h1>Proposer un <em class="marker">exercice</em></h1>
+      <p class="lead">
+        Vous avez passé un oral ? Envoyez l'énoncé tel que vous vous en souvenez, avec votre correction.
+        Chaque proposition est relue avant d'être mise en ligne, et votre nom apparaît sur la planche si vous le souhaitez.
+      </p>
+
+      <form class="sheet formulaire" id="proposition" data-adresse={ADRESSE}>
+        <div class="ligne">
+          <label>Banque
+            <select name="banque" required>
+              <option>Mines-Ponts</option><option>Centrale-Supélec</option><option>X-ENS</option>
+            </select>
+          </label>
+          <label>Filière
+            <select name="filiere" required>
+              <option>MP</option><option>PSI</option><option>PC</option>
+            </select>
+          </label>
+          <label>Année de l'oral
+            <input name="annee" type="number" min="2000" max="2100" placeholder="2026" />
+          </label>
+        </div>
+        <label>Chapitre
+          <input name="chapitre" placeholder="Réduction des endomorphismes" />
+        </label>
+        <label>Énoncé
+          <textarea name="enonce" rows="6" required placeholder="Soit $A \in M_n(\mathbb{R})$ telle que…"></textarea>
+        </label>
+        <label>Votre correction
+          <textarea name="correction" rows="10" required></textarea>
+        </label>
+        <label>Votre nom ou pseudo <span class="facultatif">(facultatif, affiché sur la planche)</span>
+          <input name="nom" />
+        </label>
+        <p class="astuce hand">Astuce : les formules s'écrivent en LaTeX entre $…$ !</p>
+        <button type="submit" disabled={!ADRESSE}>
+          {ADRESSE ? 'Envoyer ma proposition' : 'Envoi bientôt ouvert'}
+        </button>
+      </form>
+    </div>
+  </div>
+</Base>
+
+<script>
+  // À l'envoi : on rassemble les champs dans un e-mail et on ouvre la messagerie de l'élève.
+  const form = document.getElementById('proposition') as HTMLFormElement | null;
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    const champ = (nom: string) => String(f.get(nom) ?? '').trim();
+    const sujet = `Proposition OrauX : ${champ('banque')} ${champ('filiere')} ${champ('annee')}`.trim();
+    const corps = [
+      `Banque : ${champ('banque')}`,
+      `Filière : ${champ('filiere')}`,
+      `Année : ${champ('annee')}`,
+      `Chapitre : ${champ('chapitre')}`,
+      `Nom : ${champ('nom')}`,
+      '', '--- Énoncé ---', champ('enonce'),
+      '', '--- Correction ---', champ('correction'),
+    ].join('\n');
+    window.location.href = `mailto:${form.dataset.adresse}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+  });
+</script>
+
+<style>
+  .page { padding-block: 48px 72px; border-bottom: 2px solid var(--ink) }
+  .colonne { max-width: 760px }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0 }
+  h1 em { font-style: italic; font-weight: 600 }
+  .lead { font-size: 1.1rem; color: var(--ink-soft); margin: 18px 0 30px }
+
+  .formulaire { display: flex; flex-direction: column; gap: 18px; padding: 30px 28px }
+  .ligne { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) }
+  label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 0.95rem }
+  .facultatif { font-weight: 400; color: var(--ink-soft) }
+  input, select, textarea { font: inherit; font-weight: 400; color: var(--ink); background: #fff; border: 1.5px solid #b9c5ea; border-radius: 6px; padding: 9px 11px }
+  textarea { resize: vertical; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92rem }
+  .astuce { margin: 0; color: var(--bic); font-size: 1.35rem; transform: rotate(-1deg) }
+  button { align-self: flex-start; font: inherit; font-weight: 700; color: #fff; background: var(--red); border: 0; border-radius: 6px; padding: 11px 20px; cursor: pointer }
+  button:disabled { background: #9a9aab; cursor: not-allowed }
+</style>

@@ -24,7 +24,9 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 
 - `src/layouts/Base.astro` : gabarit commun (en-tête, pied de page, polices).
 - `src/styles/global.css` : couleurs et polices de la marque, mode sombre automatique.
-- `src/pages/` : une page par fichier.
+- `src/pages/` : une page par fichier. `exercices/index.astro` liste les exercices, `exercices/[id].astro` affiche une planche, `proposer.astro` est le formulaire des élèves.
+- `src/content/exercices/` : un fichier Markdown par exercice (énoncé, puis `## Indication`, puis `## Correction`). Les champs du haut sont décrits et vérifiés dans `src/content.config.ts`.
+- `src/plugins/rehype-parties.mjs` : range l'indication et la correction dans des blocs fermés par défaut.
 
 ## Décisions
 
@@ -33,12 +35,15 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 - Polices : Fraunces (titres), Instrument Sans (texte), Caveat (annotations manuscrites).
 - Une couleur par banque : Mines-Ponts orange `--mines`, Centrale-Supélec framboise `--centrale`, X-ENS bleu `--xens`. Les trois banques couvrent MP, PSI et PC.
 - Tuiles des banques : les vrais logos des écoles en filigrane, teintés à la couleur de la banque par un masque CSS (`public/logos/`, téléchargés depuis Wikimedia Commons le 2026-10-14 : Mines Paris, Ponts, CentraleSupélec, Polytechnique « l'X », ENS-PSL). Placement réglé à l'œil dans le champ `pos` de chaque logo. Les logos sont des marques des écoles : garder la mention de non-affiliation en pied de page.
-- Pas de faux contenu présenté comme réel : tout exemple est marqué « exemple écrit pour la maquette ».
+- Pas de faux contenu présenté comme réel : tout exemple est marqué « exemple écrit pour la maquette » (champ `exemple: true`).
+- Les vraies planches viennent d'Adam (champ `origine`) ; les élèves peuvent en proposer via `/proposer` (champ `auteur` quand on les publie). Pour l'instant le formulaire ouvre un e-mail prérempli ; l'adresse de réception (`ADRESSE` dans `proposer.astro`) reste à choisir, le bouton est désactivé tant qu'elle est vide.
+- Markdown : Astro 7 utilise Sätteri par défaut ; on passe par `unified()` de `@astrojs/markdown-remark` pour brancher remark-math et rehype-katex. Garder `katex` à la même version que celle de rehype-katex (sinon des symboles comme ≠ s'affichent mal).
 
 ## Avancement
 
 - Semaine 1 (squelette en ligne) : terminée le 2026-10-14. Site Astro + page d'accueil, en ligne.
-- Prochaine étape, semaine 2 : format d'un exercice (un fichier Markdown par exercice) et KaTeX.
+- Semaine 2 (format d'un exercice + KaTeX) : faite le 2026-10-19. Trois exemples, pages exercice et liste, chrono avec bouton, page « Proposer un exercice ».
+- Prochaine étape, semaine 3 : catalogue et filtres (banque, filière, chapitre).
 
 ## En ligne
 
