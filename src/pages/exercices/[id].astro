@@ -4,6 +4,7 @@
 import 'katex/dist/katex.min.css';
 import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import { banqueDe } from '../../data/banques';
 
 export async function getStaticPaths() {
   const exercices = await getCollection('exercices');
@@ -13,13 +14,14 @@ export async function getStaticPaths() {
 const { exo } = Astro.props;
 const { Content } = await render(exo);
 const d = exo.data;
-const couleur = { 'Mines-Ponts': 'mines', 'Centrale-Supélec': 'centrale', 'X-ENS': 'xens' }[d.banque];
+const banque = banqueDe(d.banque);
+const couleur = banque.cle;
 ---
 
 <Base title={d.titre} description={`${d.banque} · ${d.filiere} · ${d.chapitre}`}>
   <div class="seyes page">
     <div class="wrap colonne">
-      <p class="retour"><a href="/exercices">← Tous les exercices</a></p>
+      <p class="retour"><a href={`/concours/${banque.slug}`}>← {banque.nom}</a></p>
 
       <div class="chrono" role="timer" aria-label="Chronomètre de préparation">
         <span class="rec" aria-hidden="true"></span>Préparation

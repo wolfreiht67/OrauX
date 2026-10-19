@@ -1,21 +1,11 @@
 ---
+import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
+import { banques } from '../data/banques';
 
-// Logos des écoles (public/logos/, source Wikimedia Commons), en filigrane teinté à la couleur de la banque.
-// ratio : largeur / hauteur du fichier. pos : placement dans la tuile, réglé à l'œil.
-const banques = [
-  { nom: 'Mines-Ponts', cle: 'mines', filieres: ['MP', 'PSI', 'PC'], logos: [
-    { src: '/logos/mines-paris.png', ratio: 1960 / 591, pos: 'right: -54%; bottom: -6%; width: 84%; --r: -7deg' },
-    { src: '/logos/ponts.svg', ratio: 115 / 150, pos: 'right: 3%; top: -6%; height: 64%; --r: 8deg' },
-  ] },
-  { nom: 'Centrale-Supélec', cle: 'centrale', filieres: ['MP', 'PSI', 'PC'], logos: [
-    { src: '/logos/centralesupelec.svg', ratio: 98 / 50, pos: 'right: -20%; bottom: -12%; width: 100%; --r: -8deg' },
-  ] },
-  { nom: 'X-ENS', cle: 'xens', filieres: ['MP', 'PSI', 'PC'], logos: [
-    { src: '/logos/polytechnique.png', ratio: 1340 / 2328, pos: 'right: -4%; top: -14%; height: 128%; --r: 6deg' },
-    { src: '/logos/ens-psl.png', ratio: 960 / 405, pos: 'left: 16%; top: 42%; width: 42%; --r: -6deg' },
-  ] },
-];
+// Nombre d'exercices par banque, affiché sur chaque tuile.
+const exercices = await getCollection('exercices');
+const nombre = (nom: string) => exercices.filter((exo) => exo.data.banque === nom).length;
 
 // Chapitres de maths uniquement.
 const chapitres = [
@@ -45,7 +35,7 @@ const temps = [
           <span class="marker">indication</span> pour se débloquer et une correction rédigée au propre.
         </p>
         <div class="cta">
-          <span class="stamp">Catalogue : ouverture prochaine</span>
+          <a class="stamp" href="/exercices">Voir les exercices</a>
           <a class="see" href="#banques">Voir les banques ↓</a>
         </div>
       </div>
@@ -82,15 +72,18 @@ const temps = [
     </div>
     <ul class="banques">
       {banques.map((b) => (
-        <li class={`banque ${b.cle}`}>
-          {b.logos.map((l) => (
-            <span class="filigrane" aria-hidden="true" style={`--logo: url(${l.src}); aspect-ratio: ${l.ratio}; ${l.pos}`} />
-          ))}
-          <p class="banque-kicker">Banque</p>
-          <h3>{b.nom}</h3>
-          <ul class="filieres" aria-label="Filières">
-            {b.filieres.map((f) => <li>{f}</li>)}
-          </ul>
+        <li>
+          <a class={`banque ${b.cle}`} href={`/concours/${b.slug}`}>
+            {b.logos.map((l) => (
+              <span class="filigrane" aria-hidden="true" style={`--logo: url(${l.src}); aspect-ratio: ${l.ratio}; ${l.pos}`} />
+            ))}
+            <p class="banque-kicker">Banque</p>
+            <h3>{b.nom}</h3>
+            <p class="voir">{nombre(b.nom)} exercice{nombre(b.nom) > 1 && 's'} →</p>
+            <ul class="filieres" aria-label="Filières">
+              {b.filieres.map((f) => <li>{f}</li>)}
+            </ul>
+          </a>
         </li>
       ))}
     </ul>
@@ -139,7 +132,7 @@ const temps = [
   .lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 34em; margin: 26px 0 0 }
 
   .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; margin-top: 32px }
-  .stamp { display: inline-block; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); border: 2.5px solid var(--red); border-radius: 6px; padding: 8px 14px; transform: rotate(-3deg); background: color-mix(in srgb, var(--paper) 80%, transparent) }
+  .stamp { display: inline-block; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; color: var(--red); border: 2.5px solid var(--red); border-radius: 6px; padding: 8px 14px; transform: rotate(-3deg); background: color-mix(in srgb, var(--paper) 80%, transparent) }
   .see { font-weight: 600; color: var(--ink); text-decoration: underline wavy var(--red); text-underline-offset: 6px }
 
   /* La table : la copie, le post-it et le chrono. */
@@ -176,7 +169,7 @@ const temps = [
 
   /* Les banques : tuiles colorées, filigrane de l'école en fond. */
   .banques { list-style: none; margin: 0; padding: 0; display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)) }
-  .banque { --c: var(--bic); position: relative; overflow: hidden; display: flex; flex-direction: column; min-height: 240px; padding: 22px 24px 26px; border: 2px solid var(--ink); border-radius: 14px; background: color-mix(in srgb, var(--c) 13%, var(--paper)); box-shadow: 6px 6px 0 var(--c) }
+  .banque { --c: var(--bic); position: relative; overflow: hidden; display: flex; flex-direction: column; height: 100%; min-height: 240px; color: var(--ink); text-decoration: none; padding: 22px 24px 26px; border: 2px solid var(--ink); border-radius: 14px; background: color-mix(in srgb, var(--c) 13%, var(--paper)); box-shadow: 6px 6px 0 var(--c) }
   .banque.mines { --c: var(--mines) }
   .banque.centrale { --c: var(--centrale) }
   .banque.xens { --c: var(--xens) }
@@ -185,6 +178,7 @@ const temps = [
     -webkit-mask: var(--logo) no-repeat center / contain; mask: var(--logo) no-repeat center / contain }
   .banque-kicker { margin: 0; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
   .banque h3 { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1.05; letter-spacing: -0.02em; margin: 4px 0 auto }
+  .voir { margin: 6px 0 0; font-weight: 600; text-decoration: underline wavy var(--c); text-underline-offset: 5px }
   .filieres { list-style: none; display: flex; gap: 8px; padding: 0; margin: 30px 0 0 }
   .filieres li { font-weight: 700; font-size: 0.9rem; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper) }
 
