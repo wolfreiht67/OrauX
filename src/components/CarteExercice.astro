@@ -1,0 +1,35 @@
+---
+// La carte d'un exercice dans une liste : bandeau à la couleur du concours, titre, chapitre, durée.
+import type { CollectionEntry } from 'astro:content';
+import { banqueDe } from '../data/banques';
+
+interface Props {
+  exo: CollectionEntry<'exercices'>;
+}
+const { exo } = Astro.props;
+const d = exo.data;
+---
+
+<a class={`sheet carte ${banqueDe(d.banque).cle}`} href={`/exercices/${exo.id}`}>
+  {d.exemple && <span class="exemple">Exemple</span>}
+  <span class="meta"><span class="dot" aria-hidden="true"></span>{d.banque} · {d.filiere}</span>
+  <span class="titre">{d.titre}</span>
+  <span class="chapitre">{d.chapitre} · {d.duree} min</span>
+</a>
+
+<style>
+  .carte { position: relative; display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 22px 22px 20px; text-decoration: none; border-top: 5px solid var(--c) }
+  .carte.mines { --c: #e8871e }
+  .carte.centrale { --c: #d6336c }
+  .carte.xens { --c: #1d4ed8 }
+  .meta { display: flex; align-items: center; gap: 8px; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft) }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c) }
+  .titre { font-family: var(--display); font-weight: 700; font-size: 1.45rem; line-height: 1.15; color: var(--ink) }
+  .chapitre { font-size: 0.9rem; color: var(--ink-soft) }
+  .exemple { position: absolute; top: 10px; right: 12px; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed currentColor; border-radius: 3px; padding: 1px 6px }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .carte { transition: transform 0.2s ease }
+    .carte:hover { transform: translateY(-4px) rotate(-0.5deg) }
+  }
+</style>

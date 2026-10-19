@@ -24,7 +24,9 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 
 - `src/layouts/Base.astro` : gabarit commun (en-tête, pied de page, polices).
 - `src/styles/global.css` : couleurs et polices de la marque, mode sombre automatique.
-- `src/pages/` : une page par fichier. `exercices/index.astro` liste les exercices, `exercices/[id].astro` affiche une planche, `proposer.astro` est le formulaire des élèves.
+- `src/data/banques.ts` : les trois banques (nom, couleur, adresse, logos), partagées par toutes les pages.
+- `src/components/CarteExercice.astro` : la carte d'un exercice dans une liste.
+- `src/pages/` : une page par fichier. `concours/[banque].astro` montre les exercices d'un concours rangés par filière (les tuiles de l'accueil y mènent), `exercices/index.astro` liste tous les exercices par concours, `exercices/[id].astro` affiche une planche, `proposer.astro` est le formulaire des élèves.
 - `src/content/exercices/` : un fichier Markdown par exercice (énoncé, puis `## Indication`, puis `## Correction`). Les champs du haut sont décrits et vérifiés dans `src/content.config.ts`.
 - `src/plugins/rehype-parties.mjs` : range l'indication et la correction dans des blocs fermés par défaut.
 
