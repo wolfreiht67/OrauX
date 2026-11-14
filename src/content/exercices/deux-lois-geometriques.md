@@ -4,6 +4,7 @@ banque: X-ENS
 filiere: PC
 chapitre: Probabilités
 duree: 20
+difficulte: 1
 exemple: true
 ---
 

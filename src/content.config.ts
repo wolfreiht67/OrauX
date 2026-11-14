@@ -18,6 +18,7 @@ const exercices = defineCollection({
     chapitre: z.string(),
     annee: z.number().int().optional(),
     duree: z.number().int().positive().default(30), // préparation, en minutes
+    difficulte: z.number().int().min(1).max(3).default(2), // 1 = abordable, 2 = classique, 3 = costaud
     origine: z.string().optional(), // d'où vient la planche, par exemple « Oral passé en 2025 »
     auteur: z.string().optional(), // qui l'a proposée, si ce n'est pas vous (un élève, par exemple)
     exemple: z.boolean().default(false), // true = écrit pour la maquette, pas une vraie planche

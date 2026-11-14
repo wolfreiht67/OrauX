@@ -1,10 +1,11 @@
 ---
-import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import { banques } from '../data/banques';
+import { tousLesExercices, resume } from '../data/exercices';
 
 // Nombre d'exercices par banque, affiché sur chaque tuile.
-const exercices = await getCollection('exercices');
+const exercices = await tousLesExercices();
+const planches = exercices.map(resume);
 const nombre = (nom: string) => exercices.filter((exo) => exo.data.banque === nom).length;
 
 // Chapitres de maths uniquement.
@@ -18,7 +19,11 @@ const temps = [
   { cle: 'enonce', objet: 'sheet', titre: 'Énoncé', texte: "La planche telle qu'elle tombe à l'oral, avec le concours, la filière, l'année et la durée de préparation." },
   { cle: 'indic', objet: 'postit', titre: 'Indication', texte: 'Un coup de pouce, caché par défaut, pour se débloquer sans tout dévoiler.' },
   { cle: 'correction', objet: 'sheet', titre: 'Correction', texte: "Rédigée au propre et relue, à ouvrir une fois qu'on a vraiment cherché." },
+  { cle: 'verdict', objet: 'sheet', titre: 'Verdict', texte: 'Réussi, à revoir ou raté : un coup de tampon, et la planche rejoint votre cahier.' },
 ];
+
+// La planche du jour, avant que le script du navigateur ne choisisse celle du jour (la première par défaut).
+const jour = planches[0];
 ---
 
 <Base>
@@ -35,9 +40,10 @@ const temps = [
           <span class="marker">indication</span> pour se débloquer et une correction rédigée au propre.
         </p>
         <div class="cta">
-          <a class="stamp" href="/exercices">Voir les exercices</a>
-          <a class="see" href="#banques">Voir les banques ↓</a>
+          <a class="tampon plein" href="/oral-blanc">Tirer une planche</a>
+          <a class="vague" href="/exercices">Voir toutes les planches</a>
         </div>
+        <p class="chiffres hand">{planches.length} planches · 3 concours · MP, PSI, PC</p>
       </div>
 
       <div class="desk">
@@ -89,9 +95,48 @@ const temps = [
     </ul>
   </section>
 
+  {jour && (
+    <section class="wrap section" aria-labelledby="jour-titre">
+      <div class="section-head">
+        <h2 id="jour-titre">La planche <em class="marker">du jour</em></h2>
+        <p class="hand note" id="bonjour">Une nouvelle chaque matin.</p>
+      </div>
+      <article class={`sheet du-jour ${jour.cle}`} id="du-jour">
+        <p class="dj-meta"><span class="dot" aria-hidden="true"></span><span id="dj-meta">{jour.banque} · {jour.filiere}</span></p>
+        <h3><a id="dj-titre" href={`/exercices/${jour.id}`}>{jour.titre}</a></h3>
+        <p class="dj-chap" id="dj-chap">{jour.chapitre} · {jour.duree} min de préparation</p>
+        <div class="dj-actions">
+          <a class="tampon plein" id="dj-oral" href={`/exercices/${jour.id}?oral=1`}>La passer en oral blanc</a>
+          <a class="vague" id="dj-voir" href={`/exercices/${jour.id}`}>Juste la lire</a>
+        </div>
+        <p class="hand dj-date" id="dj-date" aria-hidden="true"></p>
+      </article>
+    </section>
+  )}
+
+  <section class="wrap section" aria-labelledby="oral-titre">
+    <div class="tableau">
+      <div>
+        <p class="craie-kicker">Le jour J, sans surprise</p>
+        <h2 id="oral-titre">Passez un <span class="souligne">oral blanc</span>.</h2>
+        <p class="craie-texte">
+          Une planche tirée au sort dans votre filière, le chrono qui démarre tout seul, la correction
+          sous enveloppe jusqu'à la fin. Puis un verdict, noté dans votre cahier. Recommencez demain.
+        </p>
+        <a class="tampon craie-bouton" href="/oral-blanc">Je tente ma chance →</a>
+      </div>
+      <ol class="craie-etapes" aria-label="Déroulé">
+        <li><b>1</b>Tirage au sort</li>
+        <li><b>2</b>Préparation chronométrée</li>
+        <li><b>3</b>Correction sous enveloppe</li>
+        <li><b>4</b>Verdict au tampon</li>
+      </ol>
+    </div>
+  </section>
+
   <section class="wrap section" aria-labelledby="temps-titre">
     <div class="section-head">
-      <h2 id="temps-titre">Une planche, <em class="marker">trois temps</em></h2>
+      <h2 id="temps-titre">Une planche, <em class="marker">quatre temps</em></h2>
     </div>
     <ol class="temps">
       {temps.map((t, i) => (
@@ -100,13 +145,47 @@ const temps = [
           <h3>{t.titre}</h3>
           <p>{t.texte}</p>
           {t.cle === 'correction' && <span class="hand annot" aria-hidden="true">Rédigé et relu ✓</span>}
+          {t.cle === 'verdict' && <span class="mini-tampon" aria-hidden="true">Réussi</span>}
         </li>
       ))}
     </ol>
   </section>
+
+  <script type="application/json" id="planches" set:html={JSON.stringify(planches)} />
 </Base>
 
 <script>
+  import { lire, serie } from '../scripts/cahier';
+  import type { Resume } from '../data/exercices';
+
+  // La planche du jour : le numéro du jour (depuis 1970) choisit une planche, la même pour tout le monde ce jour-là.
+  const planches: Resume[] = JSON.parse(document.getElementById('planches')!.textContent!);
+  const carte = document.getElementById('du-jour');
+  if (carte && planches.length) {
+    const maintenant = new Date();
+    const numero = Math.floor((maintenant.getTime() - maintenant.getTimezoneOffset() * 60000) / 86400000);
+    const p = planches[(numero * 7) % planches.length];
+    carte.className = `sheet du-jour ${p.cle}`;
+    document.getElementById('dj-meta')!.textContent = `${p.banque} · ${p.filiere}`;
+    const titre = document.getElementById('dj-titre') as HTMLAnchorElement;
+    titre.textContent = p.titre;
+    titre.href = `/exercices/${p.id}`;
+    document.getElementById('dj-chap')!.textContent = `${p.chapitre} · ${p.duree} min de préparation`;
+    (document.getElementById('dj-oral') as HTMLAnchorElement).href = `/exercices/${p.id}?oral=1`;
+    (document.getElementById('dj-voir') as HTMLAnchorElement).href = `/exercices/${p.id}`;
+    document.getElementById('dj-date')!.textContent = maintenant.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    // Un mot pour l'élève qui revient, d'après son cahier.
+    const cahier = lire();
+    const faites = Object.keys(cahier.planches).length;
+    if (faites) {
+      const n = serie(cahier.jours);
+      document.getElementById('bonjour')!.textContent = n > 1
+        ? `${n} jours d'affilée, on continue !`
+        : `Re-bonjour ! ${faites} planche${faites > 1 ? 's' : ''} dans votre cahier.`;
+    }
+  }
+
   // Chrono de préparation : décompte de 30:00, puis recommence.
   const el = document.getElementById('chrono');
   if (el) {
@@ -132,8 +211,7 @@ const temps = [
   .lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 34em; margin: 26px 0 0 }
 
   .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; margin-top: 32px }
-  .stamp { display: inline-block; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; color: var(--red); border: 2.5px solid var(--red); border-radius: 6px; padding: 8px 14px; transform: rotate(-3deg); background: color-mix(in srgb, var(--paper) 80%, transparent) }
-  .see { font-weight: 600; color: var(--ink); text-decoration: underline wavy var(--red); text-underline-offset: 6px }
+  .chiffres { margin: 22px 0 0; color: var(--bic); font-size: 1.45rem; transform: rotate(-1deg) }
 
   /* La table : la copie, le post-it et le chrono. */
   .desk { position: relative; display: flex; flex-direction: column; padding-top: 18px; max-width: 470px; width: 100%; justify-self: center }
@@ -183,7 +261,7 @@ const temps = [
   .filieres li { font-weight: 700; font-size: 0.9rem; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper) }
 
   /* Les trois temps : la copie, le post-it, la copie corrigée. */
-  .temps { list-style: none; margin: 0; padding: 0; display: grid; gap: 36px 28px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); align-items: start }
+  .temps { list-style: none; margin: 0; padding: 0; display: grid; gap: 36px 28px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); align-items: start }
   .temps-item { position: relative; padding: 30px 24px 28px }
   .temps-item h3 { font-family: var(--display); font-weight: 700; font-size: 1.55rem; margin: 0 0 6px }
   .temps-item p { margin: 0; color: var(--ink-soft) }
@@ -193,7 +271,41 @@ const temps = [
   .indic h3 { color: #2b2410 }
   .indic p { color: #4a4020 }
   .correction { transform: rotate(-0.6deg); border-left: 4px solid #e03131 }
+  .verdict { transform: rotate(1deg) }
+  .mini-tampon { display: inline-block; margin-top: 12px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: #2b8a3e; border: 3px double #2b8a3e; border-radius: 5px; padding: 2px 10px; transform: rotate(-8deg) }
   .annot { display: inline-block; margin-top: 12px; color: #e03131; font-size: 1.4rem; transform: rotate(-3deg) }
+
+  /* La planche du jour : une copie avec la date écrite à la main. */
+  .du-jour { position: relative; max-width: 760px; padding: 26px 28px 26px 64px; border-top: 6px solid var(--c); transform: rotate(-0.6deg);
+    background-image: linear-gradient(90deg, transparent 40px, #f2a3a3 40px, #f2a3a3 42px, transparent 42px) }
+  .du-jour.mines { --c: #e8871e }
+  .du-jour.centrale { --c: #d6336c }
+  .du-jour.xens { --c: #1d4ed8 }
+  .dj-meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft) }
+  .du-jour .dot { background: var(--c) }
+  .du-jour h3 { margin: 6px 0 2px; font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.1; letter-spacing: -0.02em }
+  .du-jour h3 a { color: var(--ink); text-decoration: none }
+  .dj-chap { margin: 0; font-family: var(--display); font-style: italic; color: var(--ink-soft) }
+  .dj-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin-top: 22px }
+  .dj-date { position: absolute; top: 14px; right: 20px; margin: 0; color: var(--bic); font-size: 1.35rem; transform: rotate(3deg) }
+  @media (max-width: 600px) {
+    .du-jour { padding: 44px 18px 22px 34px; background-image: linear-gradient(90deg, transparent 20px, #f2a3a3 20px, #f2a3a3 22px, transparent 22px) }
+    .dj-date { left: 34px; right: auto; top: 10px; transform: none }
+  }
+
+  /* L'oral blanc, écrit à la craie sur un tableau noir. */
+  .tableau { display: grid; gap: 32px 56px; align-items: center; padding: clamp(28px, 5vw, 56px); color: #f1efe6; border-radius: 14px; border: 10px solid #6b4f34;
+    background: radial-gradient(ellipse at 30% 20%, #2c3d37, #1f2b27 70%); box-shadow: 0 24px 40px -24px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(0, 0, 0, 0.35) }
+  @media (min-width: 880px) { .tableau { grid-template-columns: 1.3fr 1fr } }
+  .craie-kicker { margin: 0; font-family: var(--hand); font-weight: 700; font-size: 1.6rem; color: #ffe873 }
+  .tableau h2 { margin: 4px 0 14px; font-family: var(--display); font-weight: 800; font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.05; letter-spacing: -0.03em }
+  .souligne { text-decoration: underline wavy #ff8f87; text-decoration-thickness: 3px; text-underline-offset: 10px }
+  .craie-texte { margin: 0 0 26px; max-width: 34em; color: #d5dbd3 }
+  .tableau .tampon { --red: #ff8f87; background: transparent }
+  .craie-etapes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; font-family: var(--hand); font-weight: 700; font-size: 1.8rem; line-height: 1.1 }
+  .craie-etapes li { display: flex; align-items: center; gap: 16px }
+  .craie-etapes li:nth-child(even) { margin-left: 22px }
+  .craie-etapes b { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border: 2.5px solid #f1efe6; border-radius: 50%; font-size: 1.5rem }
 
   /* ---------- Mouvements ---------- */
   @media (prefers-reduced-motion: no-preference) {

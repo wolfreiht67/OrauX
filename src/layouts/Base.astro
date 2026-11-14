@@ -13,6 +13,16 @@ const {
   description = "Planches d'oraux des concours, corrigées. MP · PSI · PC.",
 } = Astro.props;
 const fullTitle = title === 'OrauX' ? "OrauX · Planches d'oraux corrigées" : `${title} · OrauX`;
+
+// Les liens du menu. Celui de la page en cours est marqué (aria-current) pour être souligné.
+const liens = [
+  { href: '/exercices', texte: 'Exercices' },
+  { href: '/oral-blanc', texte: 'Oral blanc' },
+  { href: '/cahier', texte: 'Mon cahier' },
+  { href: '/proposer', texte: 'Proposer' },
+];
+const chemin = Astro.url.pathname.replace(/\/$/, '');
+const actif = (href: string) => chemin === href || chemin.startsWith(href + '/');
 ---
 
 <!doctype html>
@@ -22,6 +32,14 @@ const fullTitle = title === 'OrauX' ? "OrauX · Planches d'oraux corrigées" : `
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#fbf7ee" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f2b27" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="OrauX" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,24 +50,25 @@ const fullTitle = title === 'OrauX' ? "OrauX · Planches d'oraux corrigées" : `
     <title>{fullTitle}</title>
   </head>
   <body>
+    <a class="saut" href="#contenu">Aller au contenu</a>
     <header class="site-header">
       <div class="wrap bar">
         <a class="brand" href="/" aria-label="OrauX, accueil">Orau<MarqueX /></a>
         <nav aria-label="Principal">
-          <a href="/exercices">Exercices</a>
-          <a href="/proposer">Proposer un exercice</a>
+          {liens.map((l) => <a href={l.href} aria-current={actif(l.href) ? 'page' : undefined}>{l.texte}</a>)}
         </nav>
       </div>
     </header>
 
-    <main>
+    <main id="contenu">
       <slot />
     </main>
 
     <footer class="site-footer">
       <div class="wrap foot">
         <p class="foot-brand">Orau<MarqueX /></p>
-        <p>Planches d'oraux corrigées · MP · PSI · PC<br />Site en construction, {new Date().getFullYear()}</p>
+        <p>Planches d'oraux corrigées · MP · PSI · PC<br />
+          <a href="/exercices">Exercices</a> · <a href="/oral-blanc">Oral blanc</a> · <a href="/cahier">Mon cahier</a> · <a href="/proposer">Proposer une planche</a></p>
         <p class="mention">Les logos appartiennent à leurs écoles respectives. OrauX n'est affilié à aucune école ni à aucun concours.</p>
       </div>
     </footer>
@@ -58,15 +77,21 @@ const fullTitle = title === 'OrauX' ? "OrauX · Planches d'oraux corrigées" : `
 
 <style>
   .site-header { position: relative; z-index: 2; background: var(--paper); border-bottom: 2px solid var(--ink) }
-  .bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding-block: 14px }
   .brand { font-family: var(--display); font-weight: 900; font-size: 1.9rem; letter-spacing: -0.03em; color: var(--ink); text-decoration: none; line-height: 1; white-space: nowrap }
   nav { display: flex; flex-wrap: wrap; gap: 6px 22px }
   nav a { font-weight: 600; font-size: 0.95rem; color: var(--ink); text-decoration: none }
-  nav a:hover { text-decoration: underline wavy var(--red); text-underline-offset: 5px }
+  nav a:hover, nav a[aria-current="page"] { text-decoration: underline wavy var(--red); text-underline-offset: 5px }
+  @media (max-width: 560px) {
+    .bar { padding-block: 12px 10px }
+    nav { gap: 6px 16px; width: 100% }
+    nav a { font-size: 0.9rem }
+  }
 
   .site-footer { margin-top: 96px; background: var(--ink); color: var(--paper) }
   .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px; padding-block: 36px 44px }
   .foot p { margin: 0; font-size: 0.92rem; opacity: 0.85 }
+  .foot a { color: inherit }
   .foot .mention { flex-basis: 100%; font-size: 0.8rem; opacity: 0.6 }
   .foot .foot-brand { font-family: var(--display); font-weight: 900; font-size: 2.6rem; letter-spacing: -0.03em; line-height: 1; opacity: 1 }
 </style>

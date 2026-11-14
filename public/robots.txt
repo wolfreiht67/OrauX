@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://orau-x.vercel.app/sitemap.xml
