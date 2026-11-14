@@ -4,6 +4,7 @@ banque: Centrale-Supélec
 filiere: PSI
 chapitre: Intégration sur un intervalle
 duree: 30
+difficulte: 1
 exemple: true
 ---
 

@@ -1,43 +1,78 @@
 ---
 // Une page par exercice. Astro crée une page pour chaque fichier de src/content/exercices/.
 // Les crochets dans le nom du fichier ([id]) veulent dire : « cette partie de l'adresse change ».
+//
+// Avec ?oral=1 au bout de l'adresse (lien donné par la page « Oral blanc »), la planche passe en
+// mode oral blanc : le chrono démarre tout seul et la correction reste sous enveloppe jusqu'à la fin.
 import 'katex/dist/katex.min.css';
-import { getCollection, render } from 'astro:content';
+import { render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import CarteExercice from '../../components/CarteExercice.astro';
 import { banqueDe } from '../../data/banques';
+import { tousLesExercices, DIFFICULTES, type Exercice } from '../../data/exercices';
 
 export async function getStaticPaths() {
-  const exercices = await getCollection('exercices');
-  return exercices.map((exo) => ({ params: { id: exo.id }, props: { exo } }));
+  const exercices = await tousLesExercices();
+  return exercices.map((exo, i) => ({
+    params: { id: exo.id },
+    props: {
+      exo,
+      precedent: exercices[i - 1],
+      suivant: exercices[i + 1],
+      // Jusqu'à trois planches voisines : même chapitre d'abord, puis même concours.
+      voisins: [
+        ...exercices.filter((e) => e.id !== exo.id && e.data.chapitre === exo.data.chapitre),
+        ...exercices.filter((e) => e.id !== exo.id && e.data.chapitre !== exo.data.chapitre && e.data.banque === exo.data.banque),
+      ].slice(0, 3),
+    },
+  }));
 }
 
-const { exo } = Astro.props;
+interface Props {
+  exo: Exercice;
+  precedent?: Exercice;
+  suivant?: Exercice;
+  voisins: Exercice[];
+}
+const { exo, precedent, suivant, voisins } = Astro.props;
 const { Content } = await render(exo);
 const d = exo.data;
 const banque = banqueDe(d.banque);
-const couleur = banque.cle;
+const minutes = String(d.duree).padStart(2, '0');
 ---
 
-<Base title={d.titre} description={`${d.banque} · ${d.filiere} · ${d.chapitre}`}>
+<Base title={d.titre} description={`Oral ${d.banque} ${d.filiere} · ${d.chapitre} · planche corrigée avec indication.`}>
   <div class="seyes page">
     <div class="wrap colonne">
-      <p class="retour"><a href={`/concours/${banque.slug}`}>← {banque.nom}</a></p>
-
-      <div class="chrono" role="timer" aria-label="Chronomètre de préparation">
-        <span class="rec" aria-hidden="true"></span>Préparation
-        <b id="chrono" data-minutes={d.duree}>{String(d.duree).padStart(2, '0')}:00</b>
-        <button type="button" id="chrono-bouton">Lancer</button>
+      <div class="haut no-print">
+        <p class="retour"><a href={`/concours/${banque.slug}`}>← {banque.nom}</a></p>
+        <button type="button" class="vague imprimer" id="imprimer">Imprimer la planche</button>
       </div>
 
-      <article class={`sheet planche ${couleur}`}>
+      <p class="bandeau-oral no-print" id="bandeau-oral" hidden>
+        <b>Oral blanc.</b> La correction est sous enveloppe jusqu'à la fin de la préparation.
+        <button type="button" class="tampon plein" id="au-tableau">J'ai fini, au tableau !</button>
+      </p>
+
+      <div class="chrono no-print" id="chrono-boite" role="timer" aria-label="Chronomètre de préparation">
+        <span class="rec" aria-hidden="true"></span>Préparation
+        <b id="chrono" data-minutes={d.duree}>{minutes}:00</b>
+        <button type="button" id="chrono-bouton">Lancer</button>
+        <button type="button" id="chrono-zero" class="zero" aria-label="Remettre le chrono à zéro" title="Remettre à zéro">↺</button>
+      </div>
+
+      <article class={`sheet planche ${banque.cle}`} id="planche" data-id={exo.id}>
+        <div class="jauge no-print" aria-hidden="true"><span id="jauge"></span></div>
         {d.exemple && <span class="exemple">Exemple écrit pour la maquette</span>}
         <p class="planche-meta">
           <span class="dot" aria-hidden="true"></span>
           {d.banque} · {d.filiere} · {d.matiere}{d.annee && ` · ${d.annee}`}
         </p>
         <h1>{d.titre}</h1>
-        <p class="chapitre">{d.chapitre}</p>
-        <div class="contenu">
+        <p class="chapitre">
+          {d.chapitre} · {d.duree} min de préparation · <span class="niveau">{DIFFICULTES[d.difficulte]}</span>
+        </p>
+        <div class="contenu" id="contenu-planche">
           <Content />
         </div>
         {(d.origine || d.auteur) && (
@@ -45,62 +80,210 @@ const couleur = banque.cle;
             {d.origine}{d.origine && d.auteur && ' · '}{d.auteur && `Proposé par ${d.auteur}`}
           </p>
         )}
+
+        <div class="verdict no-print" role="group" aria-labelledby="verdict-titre">
+          <p class="hand" id="verdict-titre">Alors, cette planche ?</p>
+          <div class="verdict-boutons">
+            <button type="button" class="v reussi" data-verdict="reussi" aria-pressed="false">Réussi</button>
+            <button type="button" class="v revoir" data-verdict="revoir" aria-pressed="false">À revoir</button>
+            <button type="button" class="v rate" data-verdict="rate" aria-pressed="false">Raté</button>
+          </div>
+          <p class="verdict-aide">Votre verdict est noté dans <a href="/cahier">Mon cahier</a>, sur cet appareil.</p>
+        </div>
+
+        <p class="grand-tampon" id="grand-tampon" aria-hidden="true"></p>
+        <p class="tampon-fin" id="tampon-fin" aria-hidden="true">Temps écoulé !<small>Au tableau.</small></p>
       </article>
+
+      <nav class="suite no-print" aria-label="Autres planches">
+        {precedent ? <a class="prec" href={`/exercices/${precedent.id}`}><small>← Précédente</small>{precedent.data.titre}</a> : <span />}
+        {suivant && <a class="suiv" href={`/exercices/${suivant.id}`}><small>Suivante →</small>{suivant.data.titre}</a>}
+      </nav>
     </div>
   </div>
+
+  {voisins.length > 0 && (
+    <section class="wrap voisins no-print" aria-labelledby="voisins-titre">
+      <h2 id="voisins-titre">Pour continuer <span class="hand">sur la lancée</span></h2>
+      <ul class="liste">
+        {voisins.map((v) => <li><CarteExercice exo={v} /></li>)}
+      </ul>
+    </section>
+  )}
 </Base>
 
 <script>
-  // Chrono de préparation : le bouton lance ou met en pause le décompte.
-  const el = document.getElementById('chrono');
-  const bouton = document.getElementById('chrono-bouton');
-  if (el && bouton) {
-    let s = Number(el.dataset.minutes) * 60;
-    let minuteur: ReturnType<typeof setInterval> | undefined;
-    const afficher = () => {
-      el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-    };
-    bouton.addEventListener('click', () => {
-      if (minuteur) {
-        clearInterval(minuteur);
-        minuteur = undefined;
-        bouton.textContent = 'Reprendre';
-      } else {
-        minuteur = setInterval(() => {
-          if (s > 0) s -= 1;
-          afficher();
-          if (s === 0) { clearInterval(minuteur); bouton.textContent = 'Terminé'; }
-        }, 1000);
-        bouton.textContent = 'Pause';
-      }
-    });
+  import { noterPassage, donnerVerdict, verdictDe, VERDICTS, type Verdict } from '../../scripts/cahier';
+
+  const planche = document.getElementById('planche')!;
+  const id = planche.dataset.id!;
+  const el = document.getElementById('chrono')!;
+  const bouton = document.getElementById('chrono-bouton')!;
+  const zero = document.getElementById('chrono-zero')!;
+  const jauge = document.getElementById('jauge')!;
+  const boite = document.getElementById('chrono-boite')!;
+  const titreOriginal = document.title;
+  const total = Number(el.dataset.minutes) * 60;
+  const oral = new URLSearchParams(location.search).has('oral');
+
+  // ---------- Chrono de préparation ----------
+  let s = total;
+  let minuteur: ReturnType<typeof setInterval> | undefined;
+  const format = (n: number) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+  const afficher = () => {
+    el.textContent = format(s);
+    jauge.style.transform = `scaleX(${s / total})`;
+    boite.classList.toggle('presse', s > 0 && s <= 5 * 60); // les 5 dernières minutes
+    if (minuteur) document.title = `${format(s)} · ${titreOriginal}`;
+  };
+  const arreter = () => {
+    clearInterval(minuteur);
+    minuteur = undefined;
+    document.title = titreOriginal;
+  };
+  const lancer = () => {
+    noterPassage(id);
+    minuteur = setInterval(() => {
+      if (s > 0) s -= 1;
+      afficher();
+      if (s === 0) finir();
+    }, 1000);
+    bouton.textContent = 'Pause';
+    boite.classList.add('en-cours');
+    afficher();
+  };
+  function finir() {
+    arreter();
+    bouton.textContent = 'Terminé';
+    bouton.setAttribute('disabled', '');
+    boite.classList.remove('en-cours');
+    planche.classList.add('fini');
+    navigator.vibrate?.([200, 100, 200]);
+    ouvrirEnveloppe();
   }
+  bouton.addEventListener('click', () => {
+    if (minuteur) {
+      arreter();
+      bouton.textContent = 'Reprendre';
+      boite.classList.remove('en-cours');
+    } else lancer();
+  });
+  zero.addEventListener('click', () => {
+    arreter();
+    s = total;
+    bouton.textContent = 'Lancer';
+    bouton.removeAttribute('disabled');
+    boite.classList.remove('en-cours');
+    planche.classList.remove('fini');
+    afficher();
+  });
+
+  // ---------- Indication et correction ----------
+  const correction = document.querySelector<HTMLDetailsElement>('details.correction');
+  const indication = document.querySelector<HTMLDetailsElement>('details.indication');
+  let sousEnveloppe = false;
+  document.querySelectorAll('details.partie').forEach((d) => d.addEventListener('toggle', () => noterPassage(id)));
+
+  // ---------- Mode oral blanc ----------
+  const bandeau = document.getElementById('bandeau-oral')!;
+  function ouvrirEnveloppe() {
+    if (!sousEnveloppe) return;
+    sousEnveloppe = false;
+    planche.classList.remove('enveloppe');
+    bandeau.hidden = true;
+    correction?.querySelector('.cadenas')?.remove();
+  }
+  if (oral && correction) {
+    sousEnveloppe = true;
+    planche.classList.add('enveloppe');
+    bandeau.hidden = false;
+    correction.querySelector('summary')!.insertAdjacentHTML('beforeend', '<span class="cadenas"> · sous enveloppe</span>');
+    correction.addEventListener('click', (e) => {
+      if (!sousEnveloppe) return;
+      e.preventDefault();
+      correction.classList.remove('secoue');
+      void correction.offsetWidth; // relance l'animation
+      correction.classList.add('secoue');
+    });
+    indication?.addEventListener('toggle', () => {
+      if (indication.open && !indication.querySelector('.note-examinateur'))
+        indication.querySelector('summary')!.insertAdjacentHTML('beforeend', '<span class="note-examinateur"> (l’examinateur l’a noté)</span>');
+    });
+    document.getElementById('au-tableau')!.addEventListener('click', () => {
+      if (s > 0) {
+        arreter();
+        bouton.textContent = 'Terminé';
+        bouton.setAttribute('disabled', '');
+        boite.classList.remove('en-cours');
+      }
+      ouvrirEnveloppe();
+      correction.open = true;
+      correction.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    lancer();
+  }
+
+  // ---------- Verdict ----------
+  const grandTampon = document.getElementById('grand-tampon')!;
+  const boutonsVerdict = [...document.querySelectorAll<HTMLButtonElement>('[data-verdict]')];
+  function montrerVerdict(v?: Verdict) {
+    boutonsVerdict.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.verdict === v)));
+    planche.dataset.verdict = v ?? '';
+    grandTampon.textContent = v ? VERDICTS[v] : '';
+  }
+  boutonsVerdict.forEach((b) =>
+    b.addEventListener('click', () => {
+      const v = b.getAttribute('aria-pressed') === 'true' ? undefined : (b.dataset.verdict as Verdict);
+      donnerVerdict(id, v);
+      planche.classList.remove('tamponne');
+      void planche.offsetWidth;
+      planche.classList.add('tamponne');
+      montrerVerdict(v);
+    }),
+  );
+  montrerVerdict(verdictDe(id));
+
+  document.getElementById('imprimer')!.addEventListener('click', () => window.print());
 </script>
 
 <style>
   .page { padding-block: 32px 72px; border-bottom: 2px solid var(--ink) }
   .colonne { max-width: 820px }
-  .retour { margin: 0 0 22px; font-weight: 600 }
+  .haut { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 20px; margin-bottom: 22px }
+  .retour { margin: 0; font-weight: 600 }
+  .imprimer { font: inherit; font-size: 0.92rem; background: none; border: 0; padding: 0; cursor: pointer }
 
+  .bandeau-oral { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 26px; padding: 14px 18px; color: var(--paper); background: var(--ink); border-radius: 10px }
+  .bandeau-oral[hidden] { display: none }
+  .bandeau-oral .tampon { margin-left: auto; transform: rotate(-2deg); border-color: var(--red) }
+
+  /* Le chrono, en pastille noire posée sur la copie. */
   .chrono { display: inline-flex; align-items: center; gap: 8px; margin-bottom: -10px; position: relative; z-index: 2; background: var(--ink); color: var(--paper); font-size: 0.85rem; font-weight: 600; padding: 6px 8px 6px 14px; border-radius: 999px; transform: rotate(-2deg) }
-  .chrono b { font-size: 1.05rem; font-variant-numeric: tabular-nums }
+  .chrono b { font-size: 1.05rem; font-variant-numeric: tabular-nums; min-width: 3.1em }
   .chrono button { font: inherit; font-size: 0.8rem; cursor: pointer; color: var(--ink); background: var(--paper); border: 0; border-radius: 999px; padding: 3px 12px }
-  .rec { width: 8px; height: 8px; border-radius: 50%; background: #ff5a5a }
+  .chrono button:disabled { cursor: default; opacity: 0.7 }
+  .chrono .zero { padding: 3px 9px; background: transparent; color: var(--paper); font-size: 1rem }
+  .rec { width: 8px; height: 8px; border-radius: 50%; background: #ff5a5a; opacity: 0.4 }
+  .chrono.presse { background: var(--red); color: #fff }
+  .chrono.presse .zero { color: #fff }
 
   /* La copie : marge rouge à gauche, comme une vraie feuille. */
-  .planche { position: relative; padding: 38px 32px 40px 70px; font-size: 1.05rem;
+  .planche { position: relative; padding: 38px 32px 34px 70px; font-size: 1.05rem;
     background-image: linear-gradient(90deg, transparent 46px, #f2a3a3 46px, #f2a3a3 48px, transparent 48px) }
   @media (max-width: 600px) {
-    .planche { padding: 40px 18px 32px 34px; background-image: linear-gradient(90deg, transparent 22px, #f2a3a3 22px, #f2a3a3 24px, transparent 24px) }
+    .planche { padding: 44px 18px 28px 34px; background-image: linear-gradient(90deg, transparent 22px, #f2a3a3 22px, #f2a3a3 24px, transparent 24px) }
   }
   .planche.mines { --c: #e8871e }
   .planche.centrale { --c: #d6336c }
   .planche.xens { --c: #1d4ed8 }
+  /* La jauge du temps : un trait à la couleur du concours, en haut de la copie, qui raccourcit. */
+  .jauge { position: absolute; inset: 0 0 auto; height: 5px; overflow: hidden; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--c) 18%, transparent) }
+  .jauge span { display: block; height: 100%; background: var(--c); transform-origin: left; transition: transform 1s linear }
   .planche-meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft) }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c) }
-  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.1; letter-spacing: -0.02em; margin: 8px 0 2px }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.1; letter-spacing: -0.02em; margin: 8px 0 2px; padding-right: 40px }
   .chapitre { margin: 0 0 22px; font-family: var(--display); font-style: italic; color: var(--ink-soft) }
-  .exemple { position: absolute; top: 12px; right: 14px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed currentColor; border-radius: 3px; padding: 1px 6px }
+  .exemple { position: absolute; top: 14px; right: 14px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed currentColor; border-radius: 3px; padding: 1px 6px }
   .origine { margin: 28px 0 0; font-size: 0.85rem; color: var(--ink-soft) }
 
   /* Les formules longues défilent au lieu de déborder sur téléphone. */
@@ -113,4 +296,63 @@ const couleur = banque.cle;
   .contenu :global(details.correction) { padding-left: 18px; border-left: 4px solid var(--red) }
   .contenu :global(details.correction summary) { color: var(--red) }
   .contenu :global(details > :last-child) { margin-bottom: 0 }
+  .contenu :global(.cadenas), .contenu :global(.note-examinateur) { font-size: 1.15rem; opacity: 0.75 }
+  .enveloppe .contenu :global(details.correction summary) { cursor: not-allowed }
+
+  /* Le verdict : trois tampons à choisir en bas de la copie. */
+  .verdict { margin-top: 34px; padding-top: 18px; border-top: 1.5px dashed #c9cde0 }
+  .verdict .hand { margin: 0 0 8px; font-size: 1.6rem; color: var(--bic) }
+  .verdict-boutons { display: flex; flex-wrap: wrap; gap: 10px }
+  .v { --v: #2b8a3e; font: inherit; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v); background: transparent; border: 2.5px solid var(--v); border-radius: 6px; padding: 7px 14px; cursor: pointer }
+  .v.revoir { --v: #d9480f }
+  .v.rate { --v: #e03131 }
+  .v[aria-pressed="true"] { color: #fff; background: var(--v) }
+  .verdict-aide { margin: 10px 0 0; font-size: 0.85rem; color: var(--ink-soft) }
+
+  /* Le grand tampon posé sur la copie une fois le verdict donné. */
+  .grand-tampon { display: none; position: absolute; bottom: 70px; right: 26px; margin: 0; pointer-events: none;
+    font-weight: 800; font-size: 1.3rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v);
+    border: 3px double var(--v); border-radius: 6px; padding: 4px 12px; transform: rotate(-12deg); opacity: 0.85; mix-blend-mode: multiply }
+  .planche[data-verdict="reussi"] .grand-tampon, .planche[data-verdict="revoir"] .grand-tampon, .planche[data-verdict="rate"] .grand-tampon { display: block }
+  .planche[data-verdict="reussi"] { --v: #2b8a3e }
+  .planche[data-verdict="revoir"] { --v: #d9480f }
+  .planche[data-verdict="rate"] { --v: #e03131 }
+  @media (max-width: 600px) { .grand-tampon { bottom: auto; top: -14px; right: 10px; font-size: 1rem } }
+
+  /* « Temps écoulé ! » : un tampon rouge qui tombe sur la copie à la fin du chrono. */
+  .tampon-fin { display: none; position: absolute; top: 120px; left: 50%; z-index: 3; margin: 0; pointer-events: none; text-align: center;
+    font-family: var(--hand); font-weight: 700; font-size: 2.8rem; line-height: 1; color: var(--red); background: color-mix(in srgb, var(--sheet) 70%, transparent);
+    border: 4px solid var(--red); border-radius: 12px; padding: 10px 22px; transform: translateX(-50%) rotate(-8deg) }
+  .tampon-fin small { display: block; font-size: 1.5rem }
+  .planche.fini .tampon-fin { display: block }
+
+  /* Planche précédente / suivante. */
+  .suite { display: flex; justify-content: space-between; gap: 16px; margin-top: 30px }
+  .suite a { display: flex; flex-direction: column; max-width: 48%; color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 700; font-size: 1.15rem; line-height: 1.2 }
+  .suite small { font-family: var(--body); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft) }
+  .suite a:hover { text-decoration: underline wavy var(--red); text-underline-offset: 5px }
+  .suiv { text-align: right; margin-left: auto }
+
+  .voisins { margin-top: 64px }
+  .voisins h2 { font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 4vw, 2.3rem); letter-spacing: -0.02em; margin: 0 0 22px }
+  .voisins h2 .hand { color: var(--red); font-size: 0.9em; font-weight: 700 }
+  .liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .chrono.en-cours .rec { opacity: 1; animation: pulse 1.2s ease-in-out infinite }
+    .planche.fini .tampon-fin { animation: tomber 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) both }
+    .planche.tamponne .grand-tampon { animation: tamponner 0.35s cubic-bezier(0.3, 1.4, 0.5, 1) both }
+    .contenu :global(details.secoue) { animation: secouer 0.4s ease }
+  }
+  @keyframes pulse { 50% { opacity: 0.25 } }
+  @keyframes tomber { from { opacity: 0; transform: translateX(-50%) rotate(-20deg) scale(2.2) } }
+  @keyframes tamponner { from { opacity: 0; transform: rotate(-30deg) scale(2) } }
+  @keyframes secouer { 20%, 60% { transform: translateX(-6px) } 40%, 80% { transform: translateX(6px) } }
+
+  /* À l'impression : la copie seule, sans les boutons. */
+  @media print {
+    .page { padding: 0; border: 0 }
+    .planche { padding: 0 0 0 40px; transform: none }
+    .grand-tampon, .tampon-fin { display: none !important }
+  }
 </style>

@@ -1,52 +1,205 @@
 ---
-// Tous les exercices, rangés par concours. Les filtres (filière, chapitre) arrivent en semaine 3.
-import { getCollection } from 'astro:content';
+// Le catalogue : toutes les planches, avec des filtres (concours, filière, chapitre, difficulté, avancement)
+// et une recherche. Le filtrage se fait dans le navigateur : la page contient toutes les cartes,
+// le script cache celles qui ne correspondent pas. Les filtres choisis s'écrivent dans l'adresse
+// (?filiere=MP&banque=x-ens…), on peut donc partager ou garder en favori une recherche.
 import Base from '../../layouts/Base.astro';
 import CarteExercice from '../../components/CarteExercice.astro';
-import { banques } from '../../data/banques';
+import { banques, banqueDe } from '../../data/banques';
+import { tousLesExercices, DIFFICULTES } from '../../data/exercices';
 
-const exercices = (await getCollection('exercices')).sort((a, b) => a.data.titre.localeCompare(b.data.titre, 'fr'));
+const exercices = await tousLesExercices();
+const chapitres = [...new Set(exercices.map((exo) => exo.data.chapitre))].sort((a, b) => a.localeCompare(b, 'fr'));
+
+// Texte sans accents ni majuscules, pour que « integrale » trouve « Intégrale ».
+const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 ---
 
-<Base title="Exercices">
+<Base title="Exercices" description="Toutes les planches d'oraux corrigées, à filtrer par concours, filière, chapitre et difficulté.">
   <section class="wrap section">
     <div class="section-head">
-      <h1>Les <em class="marker">exercices</em></h1>
-      <p class="hand note">Les vraies planches arrivent bientôt !</p>
+      <h1 class="titre-page">Les <em class="marker">planches</em></h1>
+      <p class="hand note">Choisissez, chronométrez, corrigez-vous.</p>
     </div>
-    {banques.map((banque) => {
-      const liste = exercices.filter((exo) => exo.data.banque === banque.nom);
-      return (
-        <section class={`banque ${banque.cle}`} aria-labelledby={`b-${banque.slug}`}>
-          <h2 id={`b-${banque.slug}`}><a href={`/concours/${banque.slug}`}>{banque.nom} →</a></h2>
-          {liste.length > 0 ? (
-            <ul class="liste">
-              {liste.map((exo) => <li><CarteExercice exo={exo} /></li>)}
-            </ul>
-          ) : (
-            <p class="hand vide">Bientôt !</p>
-          )}
-        </section>
-      );
-    })}
-    <p class="proposer">Vous avez passé un oral ? <a href="/proposer">Proposez votre exercice</a> avec sa correction.</p>
+
+    <form class="filtres" id="filtres" role="search" aria-label="Filtrer les planches">
+      <label class="recherche">
+        <span class="sr-only">Rechercher</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 21 21" /></svg>
+        <input type="search" name="q" placeholder="Rechercher : intégrale, déterminant, probabilités…" autocomplete="off" />
+      </label>
+
+      <fieldset>
+        <legend>Concours</legend>
+        {banques.map((b) => <button type="button" class={`puce ${b.cle}`} data-filtre="banque" data-valeur={b.slug} aria-pressed="false"><span class="dot" aria-hidden="true" />{b.nom}</button>)}
+      </fieldset>
+      <fieldset>
+        <legend>Filière</legend>
+        {['MP', 'PSI', 'PC'].map((f) => <button type="button" class="puce" data-filtre="filiere" data-valeur={f} aria-pressed="false">{f}</button>)}
+      </fieldset>
+      <fieldset>
+        <legend>Difficulté</legend>
+        {[1, 2, 3].map((n) => <button type="button" class="puce" data-filtre="difficulte" data-valeur={String(n)} aria-pressed="false">{DIFFICULTES[n]}</button>)}
+      </fieldset>
+      <div class="selects">
+        <label>Chapitre
+          <select name="chapitre">
+            <option value="">Tous les chapitres</option>
+            {chapitres.map((c) => <option>{c}</option>)}
+          </select>
+        </label>
+        <label>Avancement
+          <select name="avancement">
+            <option value="">Toutes les planches</option>
+            <option value="nouvelles">Pas encore travaillées</option>
+            <option value="revoir">À revoir ou ratées</option>
+            <option value="reussi">Réussies</option>
+          </select>
+        </label>
+      </div>
+    </form>
+
+    <div class="compte-ligne">
+      <p class="compte" id="compte" aria-live="polite">{exercices.length} planches</p>
+      <button type="button" class="vague effacer" id="effacer" hidden>Tout effacer</button>
+    </div>
+
+    <ul class="liste" id="liste">
+      {exercices.map((exo) => (
+        <li
+          data-banque={banqueDe(exo.data.banque).slug}
+          data-filiere={exo.data.filiere}
+          data-chapitre={exo.data.chapitre}
+          data-difficulte={exo.data.difficulte}
+          data-texte={simple(`${exo.data.titre} ${exo.data.chapitre} ${exo.data.banque} ${exo.data.filiere} ${exo.data.matiere} ${exo.body ?? ''}`)}
+          data-id={exo.id}
+        >
+          <CarteExercice exo={exo} />
+        </li>
+      ))}
+    </ul>
+
+    <div class="sheet vide" id="vide" hidden>
+      <p class="hand zero">0/20</p>
+      <p>Aucune planche ne correspond à ces filtres… pour l'instant.</p>
+      <button type="button" class="tampon" id="effacer-vide">Effacer les filtres</button>
+    </div>
+
+    <p class="proposer">Vous avez passé un oral ? <a href="/proposer">Proposez votre planche</a> avec sa correction.</p>
   </section>
 </Base>
 
+<script>
+  import { lire } from '../../scripts/cahier';
+
+  const form = document.getElementById('filtres') as HTMLFormElement;
+  const items = [...document.querySelectorAll<HTMLLIElement>('#liste > li')];
+  const compte = document.getElementById('compte')!;
+  const vide = document.getElementById('vide')!;
+  const effacer = document.getElementById('effacer')!;
+  const boutons = [...form.querySelectorAll<HTMLButtonElement>('[data-filtre]')];
+  const { planches } = lire();
+
+  const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  // Les valeurs cochées d'un groupe de boutons (par exemple les filières).
+  const coches = (filtre: string) =>
+    boutons.filter((b) => b.dataset.filtre === filtre && b.getAttribute('aria-pressed') === 'true').map((b) => b.dataset.valeur!);
+
+  function appliquer() {
+    const q = simple(String(new FormData(form).get('q') ?? '').trim());
+    const chapitre = (form.elements.namedItem('chapitre') as HTMLSelectElement).value;
+    const avancement = (form.elements.namedItem('avancement') as HTMLSelectElement).value;
+    const choix = { banque: coches('banque'), filiere: coches('filiere'), difficulte: coches('difficulte') };
+
+    let n = 0;
+    for (const li of items) {
+      const verdict = planches[li.dataset.id!]?.verdict;
+      const ok =
+        (!q || q.split(/\s+/).every((mot) => li.dataset.texte!.includes(mot))) &&
+        (!choix.banque.length || choix.banque.includes(li.dataset.banque!)) &&
+        (!choix.filiere.length || choix.filiere.includes(li.dataset.filiere!)) &&
+        (!choix.difficulte.length || choix.difficulte.includes(li.dataset.difficulte!)) &&
+        (!chapitre || li.dataset.chapitre === chapitre) &&
+        (!avancement ||
+          (avancement === 'nouvelles' && !planches[li.dataset.id!]) ||
+          (avancement === 'revoir' && (verdict === 'revoir' || verdict === 'rate')) ||
+          (avancement === 'reussi' && verdict === 'reussi'));
+      li.hidden = !ok;
+      if (ok) n += 1;
+    }
+    compte.textContent = `${n} planche${n > 1 ? 's' : ''}${n < items.length ? ` sur ${items.length}` : ''}`;
+    vide.hidden = n > 0;
+    effacer.hidden = n === items.length && !q;
+
+    // On recopie les filtres dans l'adresse de la page, sans recharger.
+    const params = new URLSearchParams();
+    if (q) params.set('q', String(new FormData(form).get('q')).trim());
+    for (const [cle, valeurs] of Object.entries(choix)) if (valeurs.length) params.set(cle, valeurs.join(','));
+    if (chapitre) params.set('chapitre', chapitre);
+    if (avancement) params.set('avancement', avancement);
+    history.replaceState(null, '', params.size ? `?${params}` : location.pathname);
+  }
+
+  // Au chargement, on relit les filtres écrits dans l'adresse.
+  const depart = new URLSearchParams(location.search);
+  (form.elements.namedItem('q') as HTMLInputElement).value = depart.get('q') ?? '';
+  (form.elements.namedItem('chapitre') as HTMLSelectElement).value = depart.get('chapitre') ?? '';
+  (form.elements.namedItem('avancement') as HTMLSelectElement).value = depart.get('avancement') ?? '';
+  for (const b of boutons) {
+    const valeurs = (depart.get(b.dataset.filtre!) ?? '').split(',');
+    b.setAttribute('aria-pressed', String(valeurs.includes(b.dataset.valeur!)));
+  }
+
+  boutons.forEach((b) =>
+    b.addEventListener('click', () => {
+      b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+      appliquer();
+    }),
+  );
+  form.addEventListener('input', appliquer);
+  form.addEventListener('submit', (e) => e.preventDefault());
+  const toutEffacer = () => {
+    form.reset();
+    boutons.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    appliquer();
+  };
+  effacer.addEventListener('click', toutEffacer);
+  document.getElementById('effacer-vide')!.addEventListener('click', toutEffacer);
+  appliquer();
+</script>
+
 <style>
   .section { margin-top: 56px }
-  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; margin-bottom: 10px }
-  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0 }
-  h1 em { font-style: italic; font-weight: 600 }
+  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; margin-bottom: 26px }
   .note { margin: 0; color: var(--red); font-size: 1.6rem; transform: rotate(-3deg) }
 
-  .banque { --c: var(--bic); margin-top: 40px }
-  .banque.mines { --c: var(--mines) }
-  .banque.centrale { --c: var(--centrale) }
-  .banque.xens { --c: var(--xens) }
-  h2 { font-family: var(--display); font-weight: 800; font-size: 1.8rem; letter-spacing: -0.02em; margin: 0 0 18px }
-  h2 a { color: var(--ink); text-decoration: underline 4px var(--c); text-underline-offset: 6px }
+  /* La barre de filtres. */
+  .filtres { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 28px; padding: 20px 0 22px; border-block: 2px solid var(--ink) }
+  .recherche { flex-basis: 100%; display: flex; align-items: center; gap: 10px; padding: 4px 14px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper) }
+  .recherche svg { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round }
+  .recherche input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: transparent; border: 0; padding: 8px 0; outline: none }
+  .recherche:focus-within { outline: 3px solid var(--bic); outline-offset: 3px }
+  fieldset { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0 }
+  legend { float: left; width: 100%; margin-bottom: 6px; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
+  .puce .dot { width: 9px; height: 9px; border-radius: 50% }
+  .puce.mines .dot { background: var(--mines) }
+  .puce.centrale .dot { background: var(--centrale) }
+  .puce.xens .dot { background: var(--xens) }
+  .selects { display: flex; flex-wrap: wrap; gap: 12px 16px }
+  .selects label { display: flex; flex-direction: column; gap: 6px; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
+  select { font: inherit; font-size: 0.92rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; padding: 6px 10px; max-width: 100% }
+
+  .compte-ligne { display: flex; align-items: baseline; gap: 18px; margin: 22px 0 18px }
+  .compte { margin: 0; font-weight: 700 }
+  .effacer { font: inherit; font-size: 0.92rem; background: none; border: 0; padding: 0; cursor: pointer }
+  .effacer[hidden] { display: none }
+
   .liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) }
-  .vide { margin: 0; color: var(--ink-soft); font-size: 1.4rem }
+  .liste > li[hidden] { display: none }
+
+  .vide { max-width: 460px; padding: 26px 28px 28px; transform: rotate(-1deg) }
+  .vide[hidden] { display: none }
+  .vide p { margin: 0 0 14px }
+  .zero { color: var(--red); font-size: 3rem; line-height: 1; transform: rotate(-6deg); display: inline-block }
   .proposer { margin-top: 48px; font-weight: 500 }
 </style>

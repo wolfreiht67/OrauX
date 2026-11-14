@@ -1,0 +1,199 @@
+---
+// L'oral blanc : comme le jour J, l'élève tire une planche au hasard (dans sa filière, son concours…),
+// puis la travaille en temps limité, correction sous enveloppe (voir le mode ?oral=1 de exercices/[id].astro).
+import Base from '../layouts/Base.astro';
+import { banques } from '../data/banques';
+import { tousLesExercices, resume } from '../data/exercices';
+
+const planches = (await tousLesExercices()).map(resume);
+---
+
+<Base title="Oral blanc" description="Tirez une planche au hasard et passez-la en conditions réelles : chrono, correction sous enveloppe, verdict.">
+  <div class="seyes page">
+    <div class="wrap grille">
+      <div class="texte">
+        <p class="hand kicker">« Tirez une planche, je vous prie. »</p>
+        <h1 class="titre-page">Oral <em class="marker">blanc</em></h1>
+        <p class="lead">
+          Comme le jour J : une planche tirée au hasard, le chrono qui tourne, et la correction
+          sous enveloppe jusqu'à la fin de la préparation.
+        </p>
+
+        <form class="sheet reglages" id="reglages">
+          <fieldset>
+            <legend>Filière</legend>
+            {['Toutes', 'MP', 'PSI', 'PC'].map((f, i) => (
+              <label class="choix"><input type="radio" name="filiere" value={i ? f : ''} checked={i === 0} /><span class="puce">{f}</span></label>
+            ))}
+          </fieldset>
+          <fieldset>
+            <legend>Concours</legend>
+            <label class="choix"><input type="radio" name="banque" value="" checked /><span class="puce">Tous</span></label>
+            {banques.map((b) => (
+              <label class="choix"><input type="radio" name="banque" value={b.nom} /><span class="puce">{b.nom}</span></label>
+            ))}
+          </fieldset>
+          <label class="case"><input type="checkbox" name="nouvelles" /> Seulement les planches que je n'ai pas encore travaillées</label>
+          <p class="dispo" id="dispo" aria-live="polite"></p>
+        </form>
+
+        <ol class="regles">
+          <li><b>Tirage.</b> Une planche au hasard parmi celles qui correspondent.</li>
+          <li><b>Préparation.</b> Le chrono démarre tout seul. L'indication reste permise… mais l'examinateur le note.</li>
+          <li><b>Au tableau.</b> À la fin du temps (ou quand vous êtes prêt), la correction s'ouvre.</li>
+          <li><b>Verdict.</b> Réussi, à revoir ou raté : tout est noté dans <a href="/cahier">Mon cahier</a>.</li>
+        </ol>
+      </div>
+
+      <div class="table">
+        <div class="pile" id="pile" aria-hidden="true">
+          <span class="dos d1"></span><span class="dos d2"></span><span class="dos d3"></span>
+        </div>
+        <div class="carte-tiree" id="carte">
+          <div class="dos-carte"><span>Orau<b>X</b></span><small>Planche n°<span id="numero">?</span></small></div>
+          <div class="sheet face" id="face" aria-live="polite">
+            <p class="face-meta"><span class="dot" aria-hidden="true"></span><span id="face-meta"></span></p>
+            <p class="face-titre" id="face-titre"></p>
+            <p class="face-chap" id="face-chap"></p>
+            <a class="tampon plein" id="commencer" href="#">Commencer la préparation →</a>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="tampon plein gros" id="tirer">Tirer une planche</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="planches" set:html={JSON.stringify(planches)} />
+</Base>
+
+<script>
+  import { lire } from '../scripts/cahier';
+  import type { Resume } from '../data/exercices';
+
+  const planches: Resume[] = JSON.parse(document.getElementById('planches')!.textContent!);
+  const form = document.getElementById('reglages') as HTMLFormElement;
+  const dispo = document.getElementById('dispo')!;
+  const tirer = document.getElementById('tirer') as HTMLButtonElement;
+  const carte = document.getElementById('carte')!;
+  const pile = document.getElementById('pile')!;
+  const lent = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let derniere = '';
+
+  // Les planches qui correspondent aux réglages.
+  function candidates() {
+    const f = new FormData(form);
+    const { planches: faites } = lire();
+    return planches.filter(
+      (p) =>
+        (!f.get('filiere') || p.filiere === f.get('filiere')) &&
+        (!f.get('banque') || p.banque === f.get('banque')) &&
+        (!f.get('nouvelles') || !faites[p.id]),
+    );
+  }
+
+  function compter() {
+    const n = candidates().length;
+    dispo.textContent = n ? `${n} planche${n > 1 ? 's' : ''} dans le chapeau.` : 'Aucune planche ne correspond : changez les réglages.';
+    tirer.disabled = n === 0;
+  }
+  // On peut arriver avec des réglages dans l'adresse : /oral-blanc?banque=X-ENS&filiere=MP
+  const depart = new URLSearchParams(location.search);
+  for (const nom of ['banque', 'filiere']) {
+    const champ = form.querySelector<HTMLInputElement>(`input[name="${nom}"][value="${CSS.escape(depart.get(nom) ?? '')}"]`);
+    if (champ) champ.checked = true;
+  }
+  form.addEventListener('change', compter);
+  compter();
+
+  tirer.addEventListener('click', () => {
+    let choix = candidates();
+    if (choix.length > 1) choix = choix.filter((p) => p.id !== derniere); // pas deux fois la même de suite
+    const p = choix[Math.floor(Math.random() * choix.length)];
+    if (!p) return;
+    derniere = p.id;
+
+    // On remplit la face de la carte, puis on la retourne.
+    document.getElementById('numero')!.textContent = String(planches.indexOf(p) + 1);
+    document.getElementById('face-meta')!.textContent = `${p.banque} · ${p.filiere}`;
+    document.getElementById('face-titre')!.textContent = p.titre;
+    document.getElementById('face-chap')!.textContent = `${p.chapitre} · ${p.duree} min de préparation`;
+    document.getElementById('face')!.className = `sheet face ${p.cle}`;
+    (document.getElementById('commencer') as HTMLAnchorElement).href = `/exercices/${p.id}?oral=1`;
+
+    tirer.textContent = 'Tirer une autre planche';
+    carte.classList.remove('retournee', 'sortie');
+    pile.classList.remove('melange');
+    void carte.offsetWidth; // pour rejouer l'animation
+    pile.classList.add('melange');
+    carte.classList.add('sortie');
+    setTimeout(() => carte.classList.add('retournee'), lent ? 650 : 0);
+  });
+</script>
+
+<style>
+  .page { padding-block: 44px 80px; border-bottom: 2px solid var(--ink) }
+  .grille { display: grid; gap: 40px 56px; align-items: start }
+  @media (min-width: 920px) { .grille { grid-template-columns: 1fr 1fr } }
+  .kicker { margin: 0 0 6px; color: var(--bic); font-size: 1.6rem; transform: rotate(-2deg); display: inline-block }
+  .lead { font-size: 1.12rem; color: var(--ink-soft); margin: 18px 0 26px; max-width: 32em }
+
+  .reglages { display: flex; flex-direction: column; gap: 16px; padding: 22px 22px 18px; transform: rotate(-0.6deg) }
+  fieldset { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0 }
+  legend { float: left; width: 100%; margin-bottom: 6px; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
+  /* Les boutons radio sont cachés : on clique sur la pastille, qui se noircit quand elle est choisie. */
+  .choix { position: relative; cursor: pointer }
+  .choix input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer }
+  .choix input:checked + .puce { color: var(--sheet); background: var(--ink) }
+  .choix input:focus-visible + .puce { outline: 3px solid var(--bic); outline-offset: 2px }
+  .reglages .puce { background: var(--sheet) }
+  .case { display: flex; gap: 10px; align-items: flex-start; font-size: 0.95rem; cursor: pointer }
+  .case input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--red) }
+  .dispo { margin: 0; font-family: var(--hand); font-weight: 700; font-size: 1.4rem; color: var(--bic) }
+
+  .regles { margin: 30px 0 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; color: var(--ink-soft) }
+  .regles b { color: var(--ink) }
+  .regles li::marker { font-family: var(--hand); font-weight: 700; font-size: 1.3em; color: var(--red) }
+
+  /* La table : une pile de copies retournées, et la planche tirée. */
+  .table { position: relative; display: flex; flex-direction: column; align-items: center; gap: 34px; padding-top: 20px; perspective: 1400px }
+  .pile, .carte-tiree { width: min(100%, 400px); aspect-ratio: 4 / 3 }
+  .pile { position: relative }
+  .dos, .dos-carte { position: absolute; inset: 0; border-radius: 6px; border: 2px solid var(--ink);
+    background: repeating-linear-gradient(45deg, #23305f 0 10px, #1d2850 10px 20px); box-shadow: 0 16px 30px -14px rgba(0, 0, 0, 0.5) }
+  .d1 { transform: rotate(-6deg) translate(-8px, 8px) }
+  .d2 { transform: rotate(4deg) translate(6px, 4px) }
+  .d3 { transform: rotate(-1deg) }
+
+  .carte-tiree { position: absolute; top: 20px; transform-style: preserve-3d; visibility: hidden }
+  .carte-tiree.sortie { visibility: visible }
+  .carte-tiree.retournee { transform: rotateY(180deg) }
+  .dos-carte, .face { backface-visibility: hidden; -webkit-backface-visibility: hidden }
+  .dos-carte { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #f1efe6 }
+  .dos-carte span { font-family: var(--display); font-weight: 900; font-size: 3rem; letter-spacing: -0.03em; line-height: 1 }
+  .dos-carte b { color: #ff6b6b }
+  .dos-carte small { font-family: var(--hand); font-size: 1.4rem }
+  .face { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 24px 24px 22px 50px; transform: rotateY(180deg); border-top: 6px solid var(--c, var(--bic));
+    background-image: linear-gradient(90deg, transparent 32px, #f2a3a3 32px, #f2a3a3 34px, transparent 34px) }
+  .face.mines { --c: #e8871e }
+  .face.centrale { --c: #d6336c }
+  .face.xens { --c: #1d4ed8 }
+  .face-meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft) }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c) }
+  .face-titre { margin: 8px 0 4px; font-family: var(--display); font-weight: 800; font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.1; color: var(--ink) }
+  .face-chap { margin: 0; font-family: var(--display); font-style: italic; color: var(--ink-soft) }
+  .face .tampon { margin-top: auto; align-self: flex-start }
+  .actions { position: relative; z-index: 2 }
+  .gros { font-size: 1rem; padding: 12px 22px }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pile.melange .d1 { animation: melange1 0.6s ease }
+    .pile.melange .d2 { animation: melange2 0.6s ease }
+    .carte-tiree.sortie { animation: sortir 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.1) both }
+    .carte-tiree.retournee { animation: none; transition: transform 0.6s cubic-bezier(0.3, 1.3, 0.5, 1) }
+  }
+  @keyframes melange1 { 40% { transform: rotate(-14deg) translate(-60px, 0) } }
+  @keyframes melange2 { 40% { transform: rotate(12deg) translate(60px, -6px) } }
+  @keyframes sortir { from { transform: translateY(0) scale(0.96) } 50% { transform: translateY(-40px) rotate(-3deg) } to { transform: none } }
+</style>

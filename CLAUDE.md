@@ -25,8 +25,10 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 - `src/layouts/Base.astro` : gabarit commun (en-tête, pied de page, polices).
 - `src/styles/global.css` : couleurs et polices de la marque, mode sombre automatique.
 - `src/data/banques.ts` : les trois banques (nom, couleur, adresse, logos), partagées par toutes les pages.
+- `src/data/exercices.ts` : la liste des exercices triée (banque puis titre), les noms des difficultés, et le résumé envoyé aux scripts du navigateur.
+- `src/scripts/cahier.ts` : « Mon cahier », la progression de l'élève (verdicts, jours d'entraînement) gardée dans son navigateur (localStorage).
 - `src/components/CarteExercice.astro` : la carte d'un exercice dans une liste.
-- `src/pages/` : une page par fichier. `concours/[banque].astro` montre les exercices d'un concours rangés par filière (les tuiles de l'accueil y mènent), `exercices/index.astro` liste tous les exercices par concours, `exercices/[id].astro` affiche une planche, `proposer.astro` est le formulaire des élèves.
+- `src/pages/` : une page par fichier. `concours/[banque].astro` montre les exercices d'un concours rangés par filière (les tuiles de l'accueil y mènent), `exercices/index.astro` est le catalogue avec filtres et recherche (filtres recopiés dans l'adresse), `exercices/[id].astro` affiche une planche (chrono, verdict, mode oral blanc avec `?oral=1`), `oral-blanc.astro` tire une planche au sort, `cahier.astro` montre la progression, `proposer.astro` est le formulaire des élèves, `404.astro` et `sitemap.xml.ts` complètent.
 - `src/content/exercices/` : un fichier Markdown par exercice (énoncé, puis `## Indication`, puis `## Correction`). Les champs du haut sont décrits et vérifiés dans `src/content.config.ts`.
 - `src/plugins/rehype-parties.mjs` : range l'indication et la correction dans des blocs fermés par défaut.
 
@@ -37,6 +39,8 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 - Polices : Fraunces (titres), Instrument Sans (texte), Caveat (annotations manuscrites).
 - Une couleur par banque : Mines-Ponts orange `--mines`, Centrale-Supélec framboise `--centrale`, X-ENS bleu `--xens`. Les trois banques couvrent MP, PSI et PC.
 - Tuiles des banques : les vrais logos des écoles en filigrane, teintés à la couleur de la banque par un masque CSS (`public/logos/`, téléchargés depuis Wikimedia Commons le 2026-10-14 : Mines Paris, Ponts, CentraleSupélec, Polytechnique « l'X », ENS-PSL). Placement réglé à l'œil dans le champ `pos` de chaque logo. Les logos sont des marques des écoles : garder la mention de non-affiliation en pied de page.
+- Champ `difficulte` (1 abordable, 2 classique, 3 costaud ; 2 par défaut) sur chaque exercice.
+- Progression sans compte : tout est dans le localStorage de l'élève (clé `oraux-cahier-v1`), rien n'est envoyé. À brancher sur Supabase en V2.
 - Pas de faux contenu présenté comme réel : tout exemple est marqué « exemple écrit pour la maquette » (champ `exemple: true`).
 - Les vraies planches viennent d'Adam (champ `origine`) ; les élèves peuvent en proposer via `/proposer` (champ `auteur` quand on les publie). Pour l'instant le formulaire ouvre un e-mail prérempli ; l'adresse de réception (`ADRESSE` dans `proposer.astro`) reste à choisir, le bouton est désactivé tant qu'elle est vide.
 - Markdown : Astro 7 utilise Sätteri par défaut ; on passe par `unified()` de `@astrojs/markdown-remark` pour brancher remark-math et rehype-katex. Garder `katex` à la même version que celle de rehype-katex (sinon des symboles comme ≠ s'affichent mal).
@@ -45,7 +49,8 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 
 - Semaine 1 (squelette en ligne) : terminée le 2026-10-14. Site Astro + page d'accueil, en ligne.
 - Semaine 2 (format d'un exercice + KaTeX) : faite le 2026-10-19. Trois exemples, pages exercice et liste, chrono avec bouton, page « Proposer un exercice ».
-- Prochaine étape, semaine 3 : catalogue et filtres (banque, filière, chapitre).
+- 2026-11-14 (à la demande d'Adam, « finis le site ») : catalogue avec filtres et recherche (semaines 3-4), oral blanc tiré au sort, verdict au tampon, « Mon cahier » (progression locale), planche du jour, page 404, sitemap, impression, accessibilité. Neuf exemples (un par concours et filière, `exemple: true`) en attendant les vraies planches.
+- Prochaine étape : remplacer les exemples par les vraies planches d'Adam, choisir l'adresse de `/proposer`, puis lancer la version test auprès d'élèves.
 
 ## En ligne
 

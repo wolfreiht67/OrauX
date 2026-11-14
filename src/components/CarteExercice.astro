@@ -1,7 +1,9 @@
 ---
-// La carte d'un exercice dans une liste : bandeau à la couleur du concours, titre, chapitre, durée.
+// La carte d'un exercice dans une liste : bandeau à la couleur du concours, titre, chapitre, durée, difficulté.
+// Si l'élève a déjà donné son verdict sur la planche (voir src/scripts/cahier.ts), un petit tampon apparaît.
 import type { CollectionEntry } from 'astro:content';
 import { banqueDe } from '../data/banques';
+import { DIFFICULTES } from '../data/exercices';
 
 interface Props {
   exo: CollectionEntry<'exercices'>;
@@ -10,15 +12,37 @@ const { exo } = Astro.props;
 const d = exo.data;
 ---
 
-<a class={`sheet carte ${banqueDe(d.banque).cle}`} href={`/exercices/${exo.id}`}>
+<a class={`sheet carte ${banqueDe(d.banque).cle}`} href={`/exercices/${exo.id}`} data-carte={exo.id}>
   {d.exemple && <span class="exemple">Exemple</span>}
   <span class="meta"><span class="dot" aria-hidden="true"></span>{d.banque} · {d.filiere}</span>
   <span class="titre">{d.titre}</span>
-  <span class="chapitre">{d.chapitre} · {d.duree} min</span>
+  <span class="chapitre">{d.chapitre}</span>
+  <span class="pied">
+    <span class="duree">{d.duree} min</span>
+    <span class="niveau" title={`Difficulté : ${DIFFICULTES[d.difficulte]}`}>
+      {[1, 2, 3].map((n) => <i class:list={{ plein: n <= d.difficulte }} aria-hidden="true" />)}
+      <span class="sr-only">Difficulté : {DIFFICULTES[d.difficulte]}</span>
+    </span>
+  </span>
+  <span class="verdict" aria-hidden="true"></span>
 </a>
 
+<script>
+  // Après le chargement, chaque carte affiche le verdict que l'élève a donné à sa planche.
+  import { lire, VERDICTS, type Verdict } from '../scripts/cahier';
+
+  const { planches } = lire();
+  document.querySelectorAll<HTMLElement>('[data-carte]').forEach((carte) => {
+    const verdict = planches[carte.dataset.carte!]?.verdict as Verdict | undefined;
+    if (!verdict) return;
+    carte.dataset.verdict = verdict;
+    carte.querySelector('.verdict')!.textContent = VERDICTS[verdict];
+    carte.setAttribute('aria-label', `${carte.querySelector('.titre')!.textContent} (${VERDICTS[verdict]})`);
+  });
+</script>
+
 <style>
-  .carte { position: relative; display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 22px 22px 20px; text-decoration: none; border-top: 5px solid var(--c) }
+  .carte { position: relative; display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 22px 22px 18px; text-decoration: none; border-top: 5px solid var(--c) }
   .carte.mines { --c: #e8871e }
   .carte.centrale { --c: #d6336c }
   .carte.xens { --c: #1d4ed8 }
@@ -26,7 +50,18 @@ const d = exo.data;
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c) }
   .titre { font-family: var(--display); font-weight: 700; font-size: 1.45rem; line-height: 1.15; color: var(--ink) }
   .chapitre { font-size: 0.9rem; color: var(--ink-soft) }
+  .pied { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 12px; font-size: 0.82rem; font-weight: 600; color: var(--ink-soft) }
+  .niveau { display: inline-flex; gap: 4px }
+  .niveau i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink-soft) }
+  .niveau i.plein { background: var(--ink); border-color: var(--ink) }
   .exemple { position: absolute; top: 10px; right: 12px; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed currentColor; border-radius: 3px; padding: 1px 6px }
+
+  /* Le tampon du verdict, posé de travers en bas à droite de la carte. */
+  .verdict { display: none; position: absolute; right: 14px; bottom: 36px; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v); border: 2px solid var(--v); border-radius: 4px; padding: 1px 7px; transform: rotate(-8deg); background: color-mix(in srgb, var(--sheet) 85%, transparent) }
+  .carte[data-verdict] .verdict { display: block }
+  .carte[data-verdict="reussi"] { --v: #2b8a3e }
+  .carte[data-verdict="revoir"] { --v: #d9480f }
+  .carte[data-verdict="rate"] { --v: #e03131 }
 
   @media (prefers-reduced-motion: no-preference) {
     .carte { transition: transform 0.2s ease }

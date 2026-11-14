@@ -1,0 +1,250 @@
+---
+// « Mon cahier » : la progression de l'élève (planches travaillées, verdicts, jours d'entraînement).
+// Tout est lu dans le navigateur (src/scripts/cahier.ts) : la page est la même pour tout le monde,
+// le script la remplit avec le cahier de l'élève.
+import Base from '../layouts/Base.astro';
+import { banques } from '../data/banques';
+import { tousLesExercices, resume } from '../data/exercices';
+
+const planches = (await tousLesExercices()).map(resume);
+---
+
+<Base title="Mon cahier" description="Votre progression sur OrauX : planches travaillées, réussies, à revoir, et vos jours d'entraînement.">
+  <section class="wrap section">
+    <div class="section-head">
+      <h1 class="titre-page">Mon <em class="marker">cahier</em></h1>
+      <p class="hand note">Tout reste sur cet appareil, rien n'est envoyé.</p>
+    </div>
+
+    <div class="sheet vierge" id="vierge" hidden>
+      <p class="hand grand">Cahier vierge.</p>
+      <p>Lancez le chrono d'une planche, ouvrez une correction ou donnez votre verdict : tout s'inscrit ici, avec vos jours d'entraînement.</p>
+      <div class="boutons">
+        <a class="tampon plein" href="/oral-blanc">Tirer une planche</a>
+        <a class="vague" href="/exercices">Parcourir les planches</a>
+      </div>
+    </div>
+
+    <div id="rempli" hidden>
+      <ul class="chiffres">
+        <li class="sheet"><b id="n-faites">0</b><span>planches travaillées <small id="n-total"></small></span></li>
+        <li class="sheet ok"><b id="n-reussi">0</b><span>réussies</span></li>
+        <li class="sheet revoir"><b id="n-revoir">0</b><span>à revoir ou ratées</span></li>
+        <li class="postit serie"><b id="n-serie">0</b><span id="serie-texte">jour d'affilée</span></li>
+      </ul>
+
+      <section class="bloc" aria-labelledby="cal-titre">
+        <h2 id="cal-titre">Mes jours <span class="hand">d'entraînement</span></h2>
+        <div class="calendrier-boite">
+          <div class="jours-semaine" aria-hidden="true"><span>lun.</span><span></span><span>mer.</span><span></span><span>ven.</span><span></span><span>dim.</span></div>
+          <div class="calendrier" id="calendrier" role="img"></div>
+        </div>
+        <p class="legende-cal">Les 12 dernières semaines. Une case noircie = un jour où vous avez travaillé une planche.</p>
+      </section>
+
+      <div class="deux">
+        <section class="bloc" aria-labelledby="concours-titre">
+          <h2 id="concours-titre">Par concours</h2>
+          <ul class="barres">
+            {banques.map((b) => (
+              <li class={b.cle} data-banque={b.nom}>
+                <span class="nom">{b.nom}</span>
+                <span class="barre"><i class="faites"></i><i class="reussies"></i></span>
+                <span class="nb"></span>
+              </li>
+            ))}
+          </ul>
+          <p class="legende"><i class="l-reussies"></i> réussies <i class="l-faites"></i> travaillées</p>
+        </section>
+
+        <section class="bloc" aria-labelledby="chap-titre">
+          <h2 id="chap-titre">Par chapitre</h2>
+          <ul class="barres chapitres" id="chapitres"></ul>
+        </section>
+      </div>
+
+      <section class="bloc" aria-labelledby="revoir-titre">
+        <h2 id="revoir-titre">À <span class="marker">revoir</span></h2>
+        <ul class="a-revoir" id="a-revoir"></ul>
+        <p class="rien" id="rien-a-revoir">Rien à revoir pour l'instant. Bravo !</p>
+      </section>
+
+      <p class="remise">
+        <button type="button" class="vague effacer" id="effacer">Effacer mon cahier</button>
+      </p>
+    </div>
+  </section>
+
+  <script type="application/json" id="planches" set:html={JSON.stringify(planches)} />
+</Base>
+
+<script>
+  import { lire, effacer, serie, aujourdhui, VERDICTS } from '../scripts/cahier';
+  import type { Resume } from '../data/exercices';
+
+  const planches: Resume[] = JSON.parse(document.getElementById('planches')!.textContent!);
+  const $ = (id: string) => document.getElementById(id)!;
+  // Pour insérer du texte dans du HTML sans risque.
+  const echapper = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+  function afficher() {
+    const cahier = lire();
+    const faites = planches.filter((p) => cahier.planches[p.id]);
+    const verdict = (p: Resume) => cahier.planches[p.id]?.verdict;
+    $('vierge').hidden = faites.length > 0;
+    $('rempli').hidden = faites.length === 0;
+    if (!faites.length) return;
+
+    // Les chiffres.
+    $('n-faites').textContent = String(faites.length);
+    $('n-total').textContent = `sur ${planches.length}`;
+    $('n-reussi').textContent = String(faites.filter((p) => verdict(p) === 'reussi').length);
+    const aRevoir = faites.filter((p) => verdict(p) === 'revoir' || verdict(p) === 'rate');
+    $('n-revoir').textContent = String(aRevoir.length);
+    const n = serie(cahier.jours);
+    $('n-serie').textContent = String(n);
+    $('serie-texte').textContent = n > 1 ? "jours d'affilée" : "jour d'affilée";
+
+    // Le calendrier : les 12 dernières semaines, une case par jour, noircie au stylo les jours d'entraînement.
+    const jours = new Set(cahier.jours);
+    const debut = new Date();
+    debut.setDate(debut.getDate() - 7 * 11 - ((debut.getDay() + 6) % 7)); // un lundi, 11 semaines avant
+    let cases = '';
+    for (let i = 0; i < 84; i++) {
+      const d = new Date(debut);
+      d.setDate(debut.getDate() + i);
+      const cle = aujourdhui(d);
+      const futur = d > new Date();
+      cases += `<span class="${jours.has(cle) ? 'fait' : ''}${futur ? ' futur' : ''}${cle === aujourdhui() ? ' auj' : ''}" title="${d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}"></span>`;
+    }
+    $('calendrier').innerHTML = cases;
+    $('calendrier').setAttribute('aria-label', `${cahier.jours.length} jour${cahier.jours.length > 1 ? 's' : ''} d'entraînement en tout`);
+
+    // Par concours.
+    document.querySelectorAll<HTMLElement>('[data-banque]').forEach((li) => {
+      const total = planches.filter((p) => p.banque === li.dataset.banque).length;
+      const f = faites.filter((p) => p.banque === li.dataset.banque);
+      const r = f.filter((p) => verdict(p) === 'reussi').length;
+      (li.querySelector('.faites') as HTMLElement).style.width = `${total ? (100 * f.length) / total : 0}%`;
+      (li.querySelector('.reussies') as HTMLElement).style.width = `${total ? (100 * r) / total : 0}%`;
+      li.querySelector('.nb')!.textContent = `${f.length}/${total}`;
+    });
+
+    // Par chapitre.
+    const chapitres = [...new Set(planches.map((p) => p.chapitre))].sort((a, b) => a.localeCompare(b, 'fr'));
+    $('chapitres').innerHTML = chapitres
+      .map((c) => {
+        const total = planches.filter((p) => p.chapitre === c).length;
+        const f = faites.filter((p) => p.chapitre === c);
+        const r = f.filter((p) => verdict(p) === 'reussi').length;
+        return `<li><a class="nom" href="/exercices?chapitre=${encodeURIComponent(c)}">${echapper(c)}</a>
+          <span class="barre"><i class="faites" style="width:${(100 * f.length) / total}%"></i><i class="reussies" style="width:${(100 * r) / total}%"></i></span>
+          <span class="nb">${f.length}/${total}</span></li>`;
+      })
+      .join('');
+
+    // À revoir.
+    $('a-revoir').innerHTML = aRevoir
+      .map(
+        (p) => `<li class="sheet ${p.cle}">
+          <span class="v-${verdict(p)}">${VERDICTS[verdict(p)!]}</span>
+          <a class="titre" href="/exercices/${p.id}">${echapper(p.titre)}</a>
+          <small>${echapper(`${p.banque} · ${p.filiere} · ${p.chapitre}`)}</small>
+          <a class="retenter" href="/exercices/${p.id}?oral=1">Retenter en oral blanc →</a>
+        </li>`,
+      )
+      .join('');
+    $('rien-a-revoir').hidden = aRevoir.length > 0;
+  }
+
+  // Effacer le cahier demande deux clics, pour éviter les accidents.
+  const bouton = $('effacer');
+  bouton.addEventListener('click', () => {
+    if (bouton.dataset.confirmer) {
+      effacer();
+      delete bouton.dataset.confirmer;
+      bouton.textContent = 'Effacer mon cahier';
+      afficher();
+    } else {
+      bouton.dataset.confirmer = '1';
+      bouton.textContent = 'Vraiment ? Cliquez encore pour tout effacer';
+    }
+  });
+
+  afficher();
+</script>
+
+<style>
+  .section { margin-top: 56px }
+  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; margin-bottom: 30px }
+  .note { margin: 0; color: var(--red); font-size: 1.5rem; transform: rotate(-2deg) }
+  [hidden] { display: none !important }
+
+  .vierge { max-width: 560px; padding: 28px 30px 30px; transform: rotate(-0.8deg) }
+  .vierge p { margin: 0 0 14px }
+  .grand { font-size: 2.6rem; line-height: 1; color: var(--bic) }
+  .boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 26px; margin-top: 20px }
+
+  .chiffres { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)) }
+  .chiffres li { display: flex; flex-direction: column; padding: 18px 20px 20px }
+  .chiffres li:nth-child(odd) { transform: rotate(-0.8deg) }
+  .chiffres li:nth-child(even) { transform: rotate(0.7deg) }
+  .chiffres b { font-family: var(--display); font-weight: 800; font-size: 3rem; line-height: 1 }
+  .chiffres span { font-weight: 600; color: var(--ink-soft) }
+  .chiffres small { font-weight: 500 }
+  .chiffres .ok b { color: #2b8a3e }
+  .chiffres .revoir b { color: #d9480f }
+  .serie b { font-family: var(--hand); font-size: 3.4rem }
+  .serie span { color: #4a4020 }
+
+  .bloc { margin-top: 52px }
+  .bloc h2 { font-family: var(--display); font-weight: 800; font-size: clamp(1.6rem, 3.6vw, 2.1rem); letter-spacing: -0.02em; margin: 0 0 18px }
+  .bloc h2 .hand { color: var(--red); font-weight: 700 }
+
+  /* Le calendrier : une feuille à petits carreaux, une colonne par semaine. */
+  .calendrier-boite { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px }
+  .jours-semaine { display: grid; grid-template-rows: repeat(7, 18px); gap: 4px; font-size: 0.7rem; line-height: 18px; color: var(--ink-soft) }
+  .legende-cal { margin: 10px 0 0; font-size: 0.85rem; color: var(--ink-soft) }
+  .calendrier { display: grid; grid-template-rows: repeat(7, 18px); grid-auto-flow: column; grid-auto-columns: 18px; gap: 4px; width: max-content }
+  .calendrier :global(span) { border: 1.5px solid var(--line-strong); border-radius: 3px }
+  .calendrier :global(span.fait) { background: var(--bic); border-color: var(--bic) }
+  .calendrier :global(span.futur) { visibility: hidden }
+  .calendrier :global(span.auj) { outline: 2px solid var(--red); outline-offset: 1px }
+
+  .deux { display: grid; gap: 0 56px }
+  @media (min-width: 900px) { .deux { grid-template-columns: 1fr 1fr } }
+
+  /* Barres de progression : le travaillé au crayon clair, le réussi au surligneur de la couleur. */
+  .barres { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px }
+  .barres :global(li) { display: grid; grid-template-columns: minmax(0, 14em) 1fr auto; align-items: center; gap: 14px; --c: var(--bic) }
+  .barres .mines { --c: var(--mines) }
+  .barres .centrale { --c: var(--centrale) }
+  .barres .xens { --c: var(--xens) }
+  .barres :global(.nom) { font-weight: 600; color: var(--ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .barres :global(a.nom:hover) { text-decoration: underline wavy var(--red) }
+  .barres :global(.barre) { position: relative; height: 14px; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--paper) }
+  .barres :global(.barre i) { position: absolute; inset: 0 auto 0 0; transition: width 0.6s ease }
+  .barres :global(.faites) { background: color-mix(in srgb, var(--c) 30%, transparent) }
+  .barres :global(.reussies) { background: var(--c) }
+  .barres :global(.nb) { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.9rem }
+  .legende { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; font-size: 0.85rem; color: var(--ink-soft) }
+  .legende i { width: 14px; height: 10px; border-radius: 3px; border: 1.5px solid var(--ink) }
+  .l-reussies { background: var(--ink) }
+  .l-faites { background: color-mix(in srgb, var(--ink) 25%, transparent); margin-left: 10px }
+
+  .a-revoir { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) }
+  .a-revoir :global(li) { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 18px 20px; border-top: 5px solid var(--c) }
+  .a-revoir :global(li.mines) { --c: #e8871e }
+  .a-revoir :global(li.centrale) { --c: #d6336c }
+  .a-revoir :global(li.xens) { --c: #1d4ed8 }
+  .a-revoir :global(.titre) { font-family: var(--display); font-weight: 700; font-size: 1.3rem; line-height: 1.15; color: var(--ink); text-decoration: none }
+  .a-revoir :global(small) { color: var(--ink-soft) }
+  .a-revoir :global(.retenter) { margin-top: 10px; font-weight: 600; font-size: 0.92rem }
+  .a-revoir :global([class^="v-"]) { align-self: flex-start; margin-bottom: 6px; font-weight: 800; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; border: 2px solid; border-radius: 4px; padding: 0 6px; transform: rotate(-4deg) }
+  .a-revoir :global(.v-revoir) { color: #d9480f }
+  .a-revoir :global(.v-rate) { color: #e03131 }
+  .rien { margin: 0; color: var(--ink-soft) }
+
+  .remise { margin-top: 60px }
+  .effacer { font: inherit; font-size: 0.9rem; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink-soft) }
+</style>

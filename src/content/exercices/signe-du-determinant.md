@@ -4,6 +4,7 @@ banque: Mines-Ponts
 filiere: MP
 chapitre: Réduction des endomorphismes
 duree: 30
+difficulte: 2
 exemple: true
 ---
 
