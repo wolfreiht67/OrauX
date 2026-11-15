@@ -88,7 +88,11 @@ const minutes = String(d.duree).padStart(2, '0');
             <button type="button" class="v revoir" data-verdict="revoir" aria-pressed="false">À revoir</button>
             <button type="button" class="v rate" data-verdict="rate" aria-pressed="false">Raté</button>
           </div>
-          <p class="verdict-aide">Votre verdict est noté dans <a href="/cahier">Mon cahier</a>, sur cet appareil.</p>
+          <p class="verdict-aide" id="verdict-info">Votre verdict est noté dans <a href="/cahier">Mon cahier</a>, sur cet appareil.</p>
+          <p class="defi">
+            <button type="button" class="vague defier" id="defier" data-titre={d.titre} data-quoi={`${d.banque} ${d.filiere}`}>Défier un ami sur cette planche</button>
+            <span class="hand copie-ok" id="copie-ok" hidden>Lien copié !</span>
+          </p>
         </div>
 
         <p class="grand-tampon" id="grand-tampon" aria-hidden="true"></p>
@@ -113,7 +117,7 @@ const minutes = String(d.duree).padStart(2, '0');
 </Base>
 
 <script>
-  import { noterPassage, donnerVerdict, verdictDe, VERDICTS, type Verdict } from '../../scripts/cahier';
+  import { noterPassage, donnerVerdict, verdictDe, lire, joliJour, joliTemps, VERDICTS, type Verdict } from '../../scripts/cahier';
 
   const planche = document.getElementById('planche')!;
   const id = planche.dataset.id!;
@@ -158,6 +162,7 @@ const minutes = String(d.duree).padStart(2, '0');
     bouton.setAttribute('disabled', '');
     boite.classList.remove('en-cours');
     planche.classList.add('fini');
+    noterPassage(id, total);
     navigator.vibrate?.([200, 100, 200]);
     ouvrirEnveloppe();
   }
@@ -216,6 +221,7 @@ const minutes = String(d.duree).padStart(2, '0');
         bouton.setAttribute('disabled', '');
         boite.classList.remove('en-cours');
       }
+      noterPassage(id, utilise() || undefined);
       ouvrirEnveloppe();
       correction.open = true;
       correction.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -226,6 +232,17 @@ const minutes = String(d.duree).padStart(2, '0');
   // ---------- Verdict ----------
   const grandTampon = document.getElementById('grand-tampon')!;
   const boutonsVerdict = [...document.querySelectorAll<HTMLButtonElement>('[data-verdict]')];
+  const info = document.getElementById('verdict-info')!;
+  const utilise = () => total - s; // secondes de préparation écoulées sur le chrono
+  // Sous les tampons : le temps passé et la date à laquelle la planche reviendra.
+  function expliquer(revision?: string) {
+    const e = lire().planches[id];
+    const morceaux = [];
+    if (e?.temps) morceaux.push(`Votre temps : <b>${joliTemps(e.temps)}</b>.`);
+    if (revision ?? e?.revision) morceaux.push(`Elle reviendra en révision le <b>${joliJour((revision ?? e?.revision)!)}</b>.`);
+    else if (e?.verdict === 'reussi') morceaux.push('Bien joué, elle est rangée.');
+    info.innerHTML = morceaux.length ? `${morceaux.join(' ')} <a href="/cahier">Mon cahier</a>` : info.innerHTML;
+  }
   function montrerVerdict(v?: Verdict) {
     boutonsVerdict.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.verdict === v)));
     planche.dataset.verdict = v ?? '';
@@ -234,7 +251,8 @@ const minutes = String(d.duree).padStart(2, '0');
   boutonsVerdict.forEach((b) =>
     b.addEventListener('click', () => {
       const v = b.getAttribute('aria-pressed') === 'true' ? undefined : (b.dataset.verdict as Verdict);
-      donnerVerdict(id, v);
+      const revision = donnerVerdict(id, v, utilise() || undefined);
+      expliquer(revision);
       planche.classList.remove('tamponne');
       void planche.offsetWidth;
       planche.classList.add('tamponne');
@@ -242,6 +260,25 @@ const minutes = String(d.duree).padStart(2, '0');
     }),
   );
   montrerVerdict(verdictDe(id));
+  if (verdictDe(id)) expliquer();
+
+  // ---------- Défier un ami ----------
+  // Sur téléphone, le menu de partage du système s'ouvre (WhatsApp, Messenger…) ; sinon le lien est copié.
+  const defier = document.getElementById('defier')!;
+  defier.addEventListener('click', async () => {
+    const e = lire().planches[id];
+    const url = location.origin + location.pathname;
+    const texte = e?.verdict === 'reussi' && e.temps
+      ? `J'ai réussi « ${defier.dataset.titre} » (${defier.dataset.quoi}) en ${joliTemps(e.temps)} sur OrauX. À toi !`
+      : `Planche d'oral ${defier.dataset.quoi} : « ${defier.dataset.titre} ». Tu la tentes ?`;
+    try {
+      if (navigator.share) return await navigator.share({ title: 'OrauX', text: texte, url });
+      await navigator.clipboard.writeText(`${texte} ${url}`);
+      const ok = document.getElementById('copie-ok')!;
+      ok.hidden = false;
+      setTimeout(() => (ok.hidden = true), 2500);
+    } catch {}
+  });
 
   document.getElementById('imprimer')!.addEventListener('click', () => window.print());
 </script>
@@ -307,7 +344,12 @@ const minutes = String(d.duree).padStart(2, '0');
   .v.revoir { --v: #d9480f }
   .v.rate { --v: #e03131 }
   .v[aria-pressed="true"] { color: #fff; background: var(--v) }
-  .verdict-aide { margin: 10px 0 0; font-size: 0.85rem; color: var(--ink-soft) }
+  .verdict-aide { margin: 10px 0 0; font-size: 0.9rem; color: var(--ink-soft) }
+  .verdict-aide :global(b) { color: var(--ink) }
+  .defi { display: flex; align-items: center; gap: 12px; margin: 14px 0 0 }
+  .defier { font: inherit; font-size: 0.92rem; background: none; border: 0; padding: 0; cursor: pointer }
+  .copie-ok { color: #2b8a3e; font-size: 1.3rem }
+  .copie-ok[hidden] { display: none }
 
   /* Le grand tampon posé sur la copie une fois le verdict donné. */
   .grand-tampon { display: none; position: absolute; bottom: 70px; right: 26px; margin: 0; pointer-events: none;

@@ -52,6 +52,7 @@ const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
           <select name="avancement">
             <option value="">Toutes les planches</option>
             <option value="nouvelles">Pas encore travaillées</option>
+            <option value="reviser">À réviser aujourd'hui</option>
             <option value="revoir">À revoir ou ratées</option>
             <option value="reussi">Réussies</option>
           </select>
@@ -90,7 +91,7 @@ const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
 </Base>
 
 <script>
-  import { lire } from '../../scripts/cahier';
+  import { lire, lireProfil, aReviser } from '../../scripts/cahier';
 
   const form = document.getElementById('filtres') as HTMLFormElement;
   const items = [...document.querySelectorAll<HTMLLIElement>('#liste > li')];
@@ -98,7 +99,9 @@ const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
   const vide = document.getElementById('vide')!;
   const effacer = document.getElementById('effacer')!;
   const boutons = [...form.querySelectorAll<HTMLButtonElement>('[data-filtre]')];
-  const { planches } = lire();
+  const cahier = lire();
+  const { planches } = cahier;
+  const dues = new Set(aReviser(cahier));
 
   const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   // Les valeurs cochées d'un groupe de boutons (par exemple les filières).
@@ -123,7 +126,8 @@ const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
         (!avancement ||
           (avancement === 'nouvelles' && !planches[li.dataset.id!]) ||
           (avancement === 'revoir' && (verdict === 'revoir' || verdict === 'rate')) ||
-          (avancement === 'reussi' && verdict === 'reussi'));
+          (avancement === 'reussi' && verdict === 'reussi') ||
+          (avancement === 'reviser' && dues.has(li.dataset.id!)));
       li.hidden = !ok;
       if (ok) n += 1;
     }
@@ -141,7 +145,10 @@ const simple = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
   }
 
   // Au chargement, on relit les filtres écrits dans l'adresse.
+  // Sans filtre dans l'adresse, on part de la filière choisie dans le profil de l'élève.
   const depart = new URLSearchParams(location.search);
+  const profil = lireProfil();
+  if (!location.search && profil.filiere) depart.set('filiere', profil.filiere);
   (form.elements.namedItem('q') as HTMLInputElement).value = depart.get('q') ?? '';
   (form.elements.namedItem('chapitre') as HTMLSelectElement).value = depart.get('chapitre') ?? '';
   (form.elements.namedItem('avancement') as HTMLSelectElement).value = depart.get('avancement') ?? '';

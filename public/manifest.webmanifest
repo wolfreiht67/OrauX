@@ -1,0 +1,17 @@
+{
+  "name": "OrauX · Planches d'oraux corrigées",
+  "short_name": "OrauX",
+  "description": "Planches d'oraux de prépa corrigées, une par jour, avec chrono et révisions.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fbf7ee",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
