@@ -26,7 +26,9 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 - `src/styles/global.css` : couleurs et polices de la marque, mode sombre automatique.
 - `src/data/banques.ts` : les trois banques (nom, couleur, adresse, logos), partagées par toutes les pages.
 - `src/data/exercices.ts` : la liste des exercices triée (banque puis titre), les noms des difficultés, et le résumé envoyé aux scripts du navigateur.
-- `src/scripts/cahier.ts` : « Mon cahier », la progression de l'élève (verdicts, jours d'entraînement) gardée dans son navigateur (localStorage).
+- `src/scripts/cahier.ts` : « Mon cahier », le profil (filière, concours visés, objectif, date d'oral) et la progression de l'élève (verdicts, temps, révisions espacées, mentions), gardés dans son navigateur (localStorage).
+- `src/data/calendrier.ts` : date estimée du début des oraux, pour le compte à rebours (à ajuster chaque année).
+- `public/sw.js` et `public/manifest.webmanifest` : site installable sur téléphone et lisible hors ligne. Changer `VERSION` dans `sw.js` si un vieux cache pose problème. `public/og.png` : la vignette de partage.
 - `src/components/CarteExercice.astro` : la carte d'un exercice dans une liste.
 - `src/pages/` : une page par fichier. `concours/[banque].astro` montre les exercices d'un concours rangés par filière (les tuiles de l'accueil y mènent), `exercices/index.astro` est le catalogue avec filtres et recherche (filtres recopiés dans l'adresse), `exercices/[id].astro` affiche une planche (chrono, verdict, mode oral blanc avec `?oral=1`), `oral-blanc.astro` tire une planche au sort, `cahier.astro` montre la progression, `proposer.astro` est le formulaire des élèves, `404.astro` et `sitemap.xml.ts` complètent.
 - `src/content/exercices/` : un fichier Markdown par exercice (énoncé, puis `## Indication`, puis `## Correction`). Les champs du haut sont décrits et vérifiés dans `src/content.config.ts`.
@@ -50,6 +52,7 @@ Adam débute en développement web et veut apprendre en construisant le site. On
 - Semaine 1 (squelette en ligne) : terminée le 2026-10-14. Site Astro + page d'accueil, en ligne.
 - Semaine 2 (format d'un exercice + KaTeX) : faite le 2026-10-19. Trois exemples, pages exercice et liste, chrono avec bouton, page « Proposer un exercice ».
 - 2026-11-14 (à la demande d'Adam, « finis le site ») : catalogue avec filtres et recherche (semaines 3-4), oral blanc tiré au sort, verdict au tampon, « Mon cahier » (progression locale), planche du jour, page 404, sitemap, impression, accessibilité. Neuf exemples (un par concours et filière, `exemple: true`) en attendant les vraies planches.
+- 2026-11-15 (Adam : « plein potentiel, surtout pour attirer les élèves ») : accueil refait autour de la planche du jour (énoncé complet, même planche pour toute une filière), profil en un clic, compte à rebours J-xxx, objectif de la semaine, révisions espacées (J+2, J+7, J+21), mentions (Passable → Félicitations du jury), temps passé, « Défier un ami », vignette de partage, site installable et hors ligne.
 - Prochaine étape : remplacer les exemples par les vraies planches d'Adam, choisir l'adresse de `/proposer`, puis lancer la version test auprès d'élèves.
 
 ## En ligne

@@ -1,29 +1,35 @@
 ---
+// L'accueil. Il doit donner envie de travailler tout de suite :
+// - à gauche, le tableau de bord de l'élève (sa filière, le compte à rebours, son objectif, ses révisions) ;
+// - à droite, la planche du jour en entier, la même pour tous les élèves d'une filière ce jour-là.
+// Tout ce qui dépend de l'élève est rempli par le script du navigateur (src/scripts/cahier.ts).
+import 'katex/dist/katex.min.css';
 import Base from '../layouts/Base.astro';
 import { banques } from '../data/banques';
 import { tousLesExercices, resume } from '../data/exercices';
+import { DEBUT_ORAUX } from '../data/calendrier';
 
-// Nombre d'exercices par banque, affiché sur chaque tuile.
 const exercices = await tousLesExercices();
 const planches = exercices.map(resume);
 const nombre = (nom: string) => exercices.filter((exo) => exo.data.banque === nom).length;
 
-// Chapitres de maths uniquement.
+// Chapitres de maths uniquement, pour le ruban qui défile.
 const chapitres = [
   'Réduction des endomorphismes', 'Séries entières', 'Intégrales à paramètre', 'Probabilités',
   'Espaces euclidiens', 'Équations différentielles', 'Topologie des evn', 'Suites et séries de fonctions',
   'Calcul différentiel', 'Polynômes', 'Intégration sur un intervalle', 'Endomorphismes autoadjoints',
 ];
 
-const temps = [
-  { cle: 'enonce', objet: 'sheet', titre: 'Énoncé', texte: "La planche telle qu'elle tombe à l'oral, avec le concours, la filière, l'année et la durée de préparation." },
-  { cle: 'indic', objet: 'postit', titre: 'Indication', texte: 'Un coup de pouce, caché par défaut, pour se débloquer sans tout dévoiler.' },
-  { cle: 'correction', objet: 'sheet', titre: 'Correction', texte: "Rédigée au propre et relue, à ouvrir une fois qu'on a vraiment cherché." },
-  { cle: 'verdict', objet: 'sheet', titre: 'Verdict', texte: 'Réussi, à revoir ou raté : un coup de tampon, et la planche rejoint votre cahier.' },
+// La frise des révisions espacées (section « La méthode »).
+const frise = [
+  { quand: "Aujourd'hui", verdict: 'rate', texte: 'Raté' },
+  { quand: 'J + 2', verdict: 'reussi', texte: 'Réussi' },
+  { quand: 'J + 7', verdict: 'reussi', texte: 'Réussi' },
+  { quand: 'J + 21', verdict: 'acquis', texte: 'Acquis' },
 ];
 
-// La planche du jour, avant que le script du navigateur ne choisisse celle du jour (la première par défaut).
-const jour = planches[0];
+// Avant que le script ne choisisse la planche du jour, on affiche la première.
+const premiere = planches[0];
 ---
 
 <Base>
@@ -36,30 +42,64 @@ const jour = planches[0];
           <span class="circled">corrigées<svg viewBox="0 0 200 80" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M14 44 C 10 18, 70 6, 120 8 C 172 10, 196 26, 190 46 C 184 66, 120 74, 76 70 C 30 66, 4 56, 12 34 C 18 20, 46 12, 66 10" /></svg></span>.
         </h1>
         <p class="lead">
-          Mines-Ponts, Centrale-Supélec, X-ENS. Des exercices d'oral classés par filière et par chapitre, avec une
-          <span class="marker">indication</span> pour se débloquer et une correction rédigée au propre.
+          Mines-Ponts, Centrale-Supélec, X-ENS. Une planche par jour, chronométrée, corrigée,
+          et <span class="marker">ce que vous ratez revient</span> jusqu'à ce que ce soit acquis.
         </p>
-        <div class="cta">
-          <a class="tampon plein" href="/oral-blanc">Tirer une planche</a>
-          <a class="vague" href="/exercices">Voir toutes les planches</a>
+
+        <!-- Premier passage : on demande la filière, en un clic. -->
+        <div class="bord choix" id="bord-choix">
+          <p class="bord-question">Vous passez les oraux en…</p>
+          <div class="filieres-choix">
+            {['MP', 'PSI', 'PC'].map((f) => <button type="button" class="grosse-puce" data-choisir={f}>{f}</button>)}
+          </div>
+          <p class="bord-aide">La planche du jour, l'oral blanc et le catalogue s'adaptent à votre filière. Rien n'est envoyé, tout reste sur cet appareil.</p>
         </div>
-        <p class="chiffres hand">{planches.length} planches · 3 concours · MP, PSI, PC</p>
+
+        <!-- Ensuite : le tableau de bord de l'élève. -->
+        <div class="bord moi" id="bord-moi" hidden>
+          <div class="compte-rebours">
+            <span class="j hand" id="j-moins">J-?</span>
+            <span class="avant">avant les oraux<small id="j-date"></small></span>
+          </div>
+          <ul class="jauges">
+            <li>
+              <span class="etiquette">Cette semaine</span>
+              <span class="points" id="objectif-points"></span>
+              <span class="valeur" id="objectif-texte"></span>
+            </li>
+            <li>
+              <span class="etiquette">Série</span>
+              <span class="valeur" id="serie-texte">0 jour</span>
+            </li>
+            <li>
+              <span class="etiquette">Mention</span>
+              <span class="valeur" id="mention-texte">Copie blanche</span>
+            </li>
+          </ul>
+          <a class="reviser" id="reviser" href="/exercices?avancement=reviser" hidden></a>
+          <p class="bord-pied"><span id="ma-filiere"></span> · <a href="/cahier#profil">modifier mon profil</a></p>
+        </div>
       </div>
 
-      <div class="desk">
-        <div class="chrono" role="timer" aria-label="Chronomètre de préparation">
-          <span class="rec" aria-hidden="true"></span>Préparation <b id="chrono">30:00</b>
+      <div class="table-jour">
+        <div class="chrono" aria-hidden="true">
+          <span class="rec"></span>Planche du jour <b id="pj-date"></b>
         </div>
-        <article class="sheet planche">
-          <span class="exemple">Exemple</span>
-          <p class="planche-meta"><span class="dot" aria-hidden="true"></span>Mines-Ponts · MP · Maths</p>
-          <h2>Signe du déterminant</h2>
-          <p>Soit A ∈ M<sub>n</sub>(ℝ) telle que A³ = A + I<sub>n</sub>.<br />Montrer que det A &gt; 0.</p>
-          <p class="hand red-note">α &gt; 1 et |β|² = 1/α donc det A &gt; 0 ✓</p>
-        </article>
-        <aside class="postit indication">
-          <span class="hand">Indication</span>
-          <p class="hand">Regarde les racines de X³ − X − 1…</p>
+        {premiere && (
+          <article class={`sheet planche-jour ${premiere.cle}`} id="planche-jour" aria-labelledby="pj-titre">
+            <p class="pj-meta"><span class="dot" aria-hidden="true"></span><span id="pj-meta">{premiere.banque} · {premiere.filiere}</span></p>
+            <h2 id="pj-titre"><a id="pj-lien" href={`/exercices/${premiere.id}`}>{premiere.titre}</a></h2>
+            <p class="pj-chap" id="pj-chap">{premiere.chapitre} · {premiere.duree} min</p>
+            <div class="pj-enonce" id="pj-enonce"></div>
+            <div class="pj-actions">
+              <a class="tampon plein" id="pj-oral" href={`/exercices/${premiere.id}?oral=1`}>Lancer la préparation</a>
+              <a class="vague" id="pj-voir" href={`/exercices/${premiere.id}`}>Voir l'indication</a>
+            </div>
+            <p class="pj-fait" id="pj-fait" hidden></p>
+          </article>
+        )}
+        <aside class="postit pj-postit" aria-hidden="true">
+          <p class="hand" id="pj-postit">Même planche pour toute la filière aujourd'hui : comparez vos temps !</p>
         </aside>
       </div>
     </div>
@@ -70,6 +110,27 @@ const jour = planches[0];
       {[...chapitres, ...chapitres].map((c) => <span>{c}<i>✶</i></span>)}
     </div>
   </div>
+
+  <section class="wrap section" aria-labelledby="methode-titre">
+    <div class="section-head">
+      <h2 id="methode-titre">Ce que vous ratez <em class="marker">revient</em>.</h2>
+      <p class="hand note">… jusqu'à ce que ce soit acquis.</p>
+    </div>
+    <p class="methode-texte">
+      Après chaque planche, vous vous corrigez d'un coup de tampon. Une planche ratée ou à revoir réapparaît
+      deux jours plus tard, puis une semaine, puis trois semaines. C'est la répétition espacée : la méthode
+      qui fait le plus retenir, sans y passer plus de temps.
+    </p>
+    <ol class="frise">
+      {frise.map((f) => (
+        <li class={f.verdict}>
+          <span class="quand hand">{f.quand}</span>
+          <span class="sheet mini-copie"><i></i><i></i><i></i><b class="mini-tampon">{f.texte}</b></span>
+        </li>
+      ))}
+    </ol>
+    <p class="methode-cta"><a class="vague" href="/cahier">Voir mon cahier de révisions →</a></p>
+  </section>
 
   <section class="wrap section" id="banques" aria-labelledby="banques-titre">
     <div class="section-head">
@@ -85,7 +146,7 @@ const jour = planches[0];
             ))}
             <p class="banque-kicker">Banque</p>
             <h3>{b.nom}</h3>
-            <p class="voir">{nombre(b.nom)} exercice{nombre(b.nom) > 1 && 's'} →</p>
+            <p class="voir">{nombre(b.nom)} planche{nombre(b.nom) > 1 && 's'} →</p>
             <ul class="filieres" aria-label="Filières">
               {b.filieres.map((f) => <li>{f}</li>)}
             </ul>
@@ -94,25 +155,6 @@ const jour = planches[0];
       ))}
     </ul>
   </section>
-
-  {jour && (
-    <section class="wrap section" aria-labelledby="jour-titre">
-      <div class="section-head">
-        <h2 id="jour-titre">La planche <em class="marker">du jour</em></h2>
-        <p class="hand note" id="bonjour">Une nouvelle chaque matin.</p>
-      </div>
-      <article class={`sheet du-jour ${jour.cle}`} id="du-jour">
-        <p class="dj-meta"><span class="dot" aria-hidden="true"></span><span id="dj-meta">{jour.banque} · {jour.filiere}</span></p>
-        <h3><a id="dj-titre" href={`/exercices/${jour.id}`}>{jour.titre}</a></h3>
-        <p class="dj-chap" id="dj-chap">{jour.chapitre} · {jour.duree} min de préparation</p>
-        <div class="dj-actions">
-          <a class="tampon plein" id="dj-oral" href={`/exercices/${jour.id}?oral=1`}>La passer en oral blanc</a>
-          <a class="vague" id="dj-voir" href={`/exercices/${jour.id}`}>Juste la lire</a>
-        </div>
-        <p class="hand dj-date" id="dj-date" aria-hidden="true"></p>
-      </article>
-    </section>
-  )}
 
   <section class="wrap section" aria-labelledby="oral-titre">
     <div class="tableau">
@@ -134,103 +176,180 @@ const jour = planches[0];
     </div>
   </section>
 
-  <section class="wrap section" aria-labelledby="temps-titre">
-    <div class="section-head">
-      <h2 id="temps-titre">Une planche, <em class="marker">quatre temps</em></h2>
-    </div>
-    <ol class="temps">
-      {temps.map((t, i) => (
-        <li class={`temps-item ${t.objet} ${t.cle}`}>
-          <span class="num" aria-hidden="true">{i + 1}.</span>
-          <h3>{t.titre}</h3>
-          <p>{t.texte}</p>
-          {t.cle === 'correction' && <span class="hand annot" aria-hidden="true">Rédigé et relu ✓</span>}
-          {t.cle === 'verdict' && <span class="mini-tampon" aria-hidden="true">Réussi</span>}
-        </li>
-      ))}
-    </ol>
-  </section>
-
   <script type="application/json" id="planches" set:html={JSON.stringify(planches)} />
+  <script type="application/json" id="debut-oraux" set:html={JSON.stringify(DEBUT_ORAUX)} />
 </Base>
 
 <script>
-  import { lire, serie } from '../scripts/cahier';
+  import {
+    lire, lireProfil, ecrireProfil, serie, cetteSemaine, aReviser, mention, joursAvant, joliJour, joliTemps,
+    type Filiere,
+  } from '../scripts/cahier';
   import type { Resume } from '../data/exercices';
 
-  // La planche du jour : le numéro du jour (depuis 1970) choisit une planche, la même pour tout le monde ce jour-là.
   const planches: Resume[] = JSON.parse(document.getElementById('planches')!.textContent!);
-  const carte = document.getElementById('du-jour');
-  if (carte && planches.length) {
+  const debutOraux: string = JSON.parse(document.getElementById('debut-oraux')!.textContent!);
+  const $ = (id: string) => document.getElementById(id)!;
+
+  // ---------- La planche du jour ----------
+  // Le numéro du jour (depuis 1970) choisit une planche parmi celles de la filière :
+  // tous les élèves d'une même filière ont la même ce jour-là.
+  function planchDuJour(filiere?: Filiere) {
     const maintenant = new Date();
     const numero = Math.floor((maintenant.getTime() - maintenant.getTimezoneOffset() * 60000) / 86400000);
-    const p = planches[(numero * 7) % planches.length];
-    carte.className = `sheet du-jour ${p.cle}`;
-    document.getElementById('dj-meta')!.textContent = `${p.banque} · ${p.filiere}`;
-    const titre = document.getElementById('dj-titre') as HTMLAnchorElement;
-    titre.textContent = p.titre;
-    titre.href = `/exercices/${p.id}`;
-    document.getElementById('dj-chap')!.textContent = `${p.chapitre} · ${p.duree} min de préparation`;
-    (document.getElementById('dj-oral') as HTMLAnchorElement).href = `/exercices/${p.id}?oral=1`;
-    (document.getElementById('dj-voir') as HTMLAnchorElement).href = `/exercices/${p.id}`;
-    document.getElementById('dj-date')!.textContent = maintenant.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const choix = planches.filter((p) => !filiere || p.filiere === filiere);
+    const liste = choix.length ? choix : planches;
+    return liste[numero % liste.length];
+  }
 
-    // Un mot pour l'élève qui revient, d'après son cahier.
-    const cahier = lire();
-    const faites = Object.keys(cahier.planches).length;
-    if (faites) {
-      const n = serie(cahier.jours);
-      document.getElementById('bonjour')!.textContent = n > 1
-        ? `${n} jours d'affilée, on continue !`
-        : `Re-bonjour ! ${faites} planche${faites > 1 ? 's' : ''} dans votre cahier.`;
+  // L'énoncé est lu sur la page de la planche elle-même (sans l'indication ni la correction).
+  async function chargerEnonce(id: string) {
+    const zone = $('pj-enonce');
+    try {
+      const html = await (await fetch(`/exercices/${id}`)).text();
+      const page = new DOMParser().parseFromString(html, 'text/html');
+      const contenu = page.getElementById('contenu-planche');
+      if (!contenu) return;
+      contenu.querySelectorAll('details').forEach((d) => d.remove());
+      zone.replaceChildren(...[...contenu.children].map((n) => document.importNode(n, true)));
+    } catch {
+      zone.textContent = '';
     }
   }
 
-  // Chrono de préparation : décompte de 30:00, puis recommence.
-  const el = document.getElementById('chrono');
-  if (el) {
-    let s = 30 * 60;
-    setInterval(() => {
-      s = s > 0 ? s - 1 : 30 * 60;
-      el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-    }, 1000);
+  function montrerPlancheDuJour(filiere?: Filiere) {
+    const p = planchDuJour(filiere);
+    if (!p || !document.getElementById('planche-jour')) return;
+    $('planche-jour').className = `sheet planche-jour ${p.cle}`;
+    $('pj-meta').textContent = `${p.banque} · ${p.filiere}`;
+    $('pj-lien').textContent = p.titre;
+    ($('pj-lien') as HTMLAnchorElement).href = `/exercices/${p.id}`;
+    $('pj-chap').textContent = `${p.chapitre} · ${p.duree} min de préparation`;
+    ($('pj-oral') as HTMLAnchorElement).href = `/exercices/${p.id}?oral=1`;
+    ($('pj-voir') as HTMLAnchorElement).href = `/exercices/${p.id}`;
+    $('pj-date').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('pj-postit').textContent = filiere
+      ? `Même planche pour tous les ${filiere} aujourd'hui : comparez vos temps !`
+      : "Même planche pour toute la filière aujourd'hui : comparez vos temps !";
+
+    // Déjà faite aujourd'hui ? On le dit, avec le temps.
+    const e = lire().planches[p.id];
+    const fait = $('pj-fait');
+    fait.hidden = !e?.verdict;
+    if (e?.verdict) {
+      fait.className = `pj-fait ${e.verdict}`;
+      fait.textContent = e.verdict === 'reussi' ? `Réussie${e.temps ? ` en ${joliTemps(e.temps)}` : ''}` : e.verdict === 'revoir' ? 'À revoir' : 'Ratée';
+    }
+    chargerEnonce(p.id);
   }
+
+  // ---------- Le tableau de bord ----------
+  function montrerBord() {
+    const profil = lireProfil();
+    $('bord-choix').hidden = Boolean(profil.filiere);
+    $('bord-moi').hidden = !profil.filiere;
+    montrerPlancheDuJour(profil.filiere);
+    if (!profil.filiere) return;
+
+    const date = profil.oral ?? debutOraux;
+    const j = joursAvant(date);
+    $('j-moins').textContent = j > 0 ? `J-${j}` : j === 0 ? 'Jour J' : 'Bravo !';
+    $('j-date').textContent = profil.oral ? `le ${joliJour(date)}` : `vers le ${joliJour(date)} (estimation)`;
+
+    const cahier = lire();
+    const n = cetteSemaine(cahier);
+    $('objectif-points').innerHTML = Array.from({ length: profil.objectif }, (_, i) => `<i class="${i < n ? 'plein' : ''}"></i>`).join('');
+    $('objectif-texte').textContent = n >= profil.objectif ? `${n}/${profil.objectif}, objectif atteint !` : `${n}/${profil.objectif} planches`;
+    const s = serie(cahier.jours);
+    $('serie-texte').textContent = s ? `${s} jour${s > 1 ? 's' : ''} d'affilée` : 'à lancer aujourd’hui';
+    const reussies = Object.values(cahier.planches).filter((e) => e.verdict === 'reussi').length;
+    const m = mention(reussies);
+    $('mention-texte').textContent = m.suivante ? `${m.actuelle.nom} (${m.suivante.nom} à ${m.suivante.seuil})` : m.actuelle.nom;
+
+    const dues = aReviser(cahier).length;
+    const lien = $('reviser');
+    lien.hidden = dues === 0;
+    lien.textContent = `${dues} planche${dues > 1 ? 's' : ''} à réviser aujourd'hui →`;
+    $('ma-filiere').textContent = `Filière ${profil.filiere}${profil.concours.length ? ` · ${profil.concours.join(', ')}` : ''}`;
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-choisir]').forEach((b) =>
+    b.addEventListener('click', () => {
+      ecrireProfil({ filiere: b.dataset.choisir as Filiere });
+      montrerBord();
+    }),
+  );
+  montrerBord();
 </script>
 
 <style>
   /* ---------- Accroche ---------- */
-  .hero { border-bottom: 2px solid var(--ink); padding-block: 52px 88px }
-  .hero-grid { display: grid; gap: 48px; align-items: center }
-  @media (min-width: 900px) { .hero-grid { grid-template-columns: 1.15fr 1fr } }
+  .hero { border-bottom: 2px solid var(--ink); padding-block: 48px 88px }
+  .hero-grid { display: grid; gap: 48px; align-items: start }
+  @media (min-width: 960px) { .hero-grid { grid-template-columns: 1fr 1.05fr } }
 
   .kicker { display: inline-block; margin: 0 0 10px; color: var(--bic); font-size: 1.7rem; line-height: 1.1; transform: rotate(-2deg) }
-  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.5rem, 7vw, 4.7rem); line-height: 1.02; letter-spacing: -0.035em; margin: 0; text-wrap: balance }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.4rem, 6.4vw, 4.4rem); line-height: 1.02; letter-spacing: -0.035em; margin: 0; text-wrap: balance }
   .circled { position: relative; display: inline-block; margin-left: 0.12em; font-style: italic; font-weight: 700 }
   .circled svg { position: absolute; left: -6%; top: -12%; width: 112%; height: 130%; overflow: visible; pointer-events: none }
   .circled path { fill: none; stroke: var(--red); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0 }
-  .lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 34em; margin: 26px 0 0 }
+  .lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 32em; margin: 24px 0 0 }
 
-  .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; margin-top: 32px }
-  .chiffres { margin: 22px 0 0; color: var(--bic); font-size: 1.45rem; transform: rotate(-1deg) }
+  /* Le tableau de bord : une fiche bristol posée sur la feuille. */
+  .bord { margin-top: 30px; max-width: 470px; padding: 20px 22px; background: var(--paper); border: 2px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--ink) }
+  .bord[hidden] { display: none }
+  .bord-question { margin: 0 0 12px; font-family: var(--display); font-weight: 700; font-size: 1.35rem }
+  .filieres-choix { display: flex; gap: 12px }
+  .grosse-puce { flex: 1; font: inherit; font-family: var(--display); font-weight: 800; font-size: 1.6rem; color: var(--ink); background: var(--paper); border: 2.5px solid var(--ink); border-radius: 12px; padding: 10px 0; cursor: pointer }
+  .grosse-puce:hover { color: var(--paper); background: var(--ink) }
+  .bord-aide { margin: 12px 0 0; font-size: 0.85rem; color: var(--ink-soft) }
 
-  /* La table : la copie, le post-it et le chrono. */
-  .desk { position: relative; display: flex; flex-direction: column; padding-top: 18px; max-width: 470px; width: 100%; justify-self: center }
-  .planche { position: relative; padding: 30px 26px 52px 58px; transform: rotate(-2deg);
-    background-image: linear-gradient(90deg, transparent 40px, #f2a3a3 40px, #f2a3a3 42px, transparent 42px) }
-  .planche h2 { font-family: var(--display); font-weight: 700; font-size: 1.65rem; line-height: 1.15; margin: 6px 0 10px }
-  .planche p { margin: 0 }
-  .planche-meta { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft) }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: #e8871e }
-  .red-note { margin-top: 14px !important; color: var(--red); font-size: 1.5rem; line-height: 1.15; transform: rotate(-1.5deg) }
-  .exemple { position: absolute; top: 12px; right: 14px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed currentColor; border-radius: 3px; padding: 1px 6px }
+  .compte-rebours { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap }
+  .j { font-size: 3.6rem; line-height: 0.9; color: var(--red); transform: rotate(-3deg); display: inline-block }
+  .avant { font-family: var(--display); font-weight: 700; font-size: 1.25rem; display: flex; flex-direction: column; line-height: 1.15 }
+  .avant small { font-family: var(--body); font-weight: 500; font-size: 0.78rem; color: var(--ink-soft) }
+  .jauges { list-style: none; margin: 16px 0 0; padding: 12px 0 0; border-top: 1.5px dashed var(--line-strong); display: flex; flex-direction: column; gap: 6px }
+  .jauges li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+  .etiquette { min-width: 7.5em; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft) }
+  .valeur { font-weight: 600 }
+  .points { display: inline-flex; gap: 5px }
+  .points :global(i) { width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 50% }
+  .points :global(i.plein) { background: var(--bic); border-color: var(--bic) }
+  .reviser { display: block; margin-top: 14px; padding: 9px 12px; font-weight: 700; color: #2b2410; background: var(--postit); border-radius: 6px; text-decoration: none; transform: rotate(-1deg) }
+  .reviser[hidden] { display: none }
+  .bord-pied { margin: 14px 0 0; font-size: 0.82rem; color: var(--ink-soft) }
 
-  .indication { align-self: flex-end; width: min(210px, 62%); margin-top: -40px; margin-right: -6px; padding: 14px 16px 18px; transform: rotate(4deg); position: relative }
-  .indication span { display: block; font-size: 1.15rem; text-decoration: underline }
-  .indication p { margin: 4px 0 0; font-size: 1.4rem; line-height: 1.15 }
-
-  .chrono { position: absolute; top: 0; left: -8px; z-index: 2; display: flex; align-items: center; gap: 8px; background: var(--ink); color: var(--paper); font-size: 0.8rem; font-weight: 600; padding: 6px 13px; border-radius: 999px; transform: rotate(-4deg) }
-  .chrono b { font-size: 1rem; font-variant-numeric: tabular-nums }
+  /* La planche du jour, posée sur la table avec son chrono et un post-it. */
+  .table-jour { position: relative; padding-top: 18px; max-width: 560px; width: 100%; justify-self: center }
+  .chrono { position: absolute; top: 0; left: -8px; z-index: 2; display: flex; align-items: center; gap: 8px; background: var(--ink); color: var(--paper); font-size: 0.8rem; font-weight: 600; padding: 6px 14px; border-radius: 999px; transform: rotate(-3deg) }
+  .chrono b { font-weight: 600; opacity: 0.8 }
   .rec { width: 8px; height: 8px; border-radius: 50%; background: #ff5a5a }
+  .planche-jour { position: relative; padding: 34px 26px 26px 60px; transform: rotate(-1deg); border-top: 6px solid var(--c);
+    background-image: linear-gradient(90deg, transparent 40px, #f2a3a3 40px, #f2a3a3 42px, transparent 42px) }
+  .planche-jour.mines { --c: #e8871e }
+  .planche-jour.centrale { --c: #d6336c }
+  .planche-jour.xens { --c: #1d4ed8 }
+  .pj-meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft) }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c) }
+  .planche-jour h2 { margin: 6px 0 2px; font-family: var(--display); font-weight: 800; font-size: clamp(1.6rem, 3.6vw, 2.1rem); line-height: 1.1; letter-spacing: -0.02em }
+  .planche-jour h2 a { color: var(--ink); text-decoration: none }
+  .pj-chap { margin: 0 0 12px; font-family: var(--display); font-style: italic; color: var(--ink-soft) }
+  .pj-enonce { min-height: 3em; font-size: 1rem }
+  .pj-enonce :global(p) { margin: 0 0 10px }
+  .pj-enonce :global(.katex-display) { overflow-x: auto; overflow-y: hidden; margin: 8px 0 }
+  .pj-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; margin-top: 18px }
+  .pj-fait { position: absolute; top: 14px; right: 16px; margin: 0; font-weight: 800; font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v); border: 3px double var(--v); border-radius: 5px; padding: 2px 8px; transform: rotate(-8deg) }
+  .pj-fait[hidden] { display: none }
+  .pj-fait.reussi { --v: #2b8a3e }
+  .pj-fait.revoir { --v: #d9480f }
+  .pj-fait.rate { --v: #e03131 }
+  .pj-postit { position: relative; width: min(250px, 70%); margin: -18px -10px 0 auto; padding: 12px 16px 14px; transform: rotate(3deg) }
+  .pj-postit p { margin: 0; font-size: 1.3rem; line-height: 1.15 }
+  @media (max-width: 600px) {
+    .planche-jour { padding: 38px 16px 22px 32px; background-image: linear-gradient(90deg, transparent 20px, #f2a3a3 20px, #f2a3a3 22px, transparent 22px) }
+    .chrono { left: 0 }
+    .pj-postit { margin-top: 10px }
+  }
 
   /* ---------- Ruban des chapitres ---------- */
   .ruban { position: relative; z-index: 1; width: calc(100% + 80px); margin: -22px 0 0 -40px; overflow: hidden; background: var(--ink); color: var(--paper); padding-block: 14px; transform: rotate(-1.5deg) }
@@ -260,38 +379,38 @@ const jour = planches[0];
   .filieres { list-style: none; display: flex; gap: 8px; padding: 0; margin: 30px 0 0 }
   .filieres li { font-weight: 700; font-size: 0.9rem; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper) }
 
-  /* Les trois temps : la copie, le post-it, la copie corrigée. */
-  .temps { list-style: none; margin: 0; padding: 0; display: grid; gap: 36px 28px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); align-items: start }
-  .temps-item { position: relative; padding: 30px 24px 28px }
-  .temps-item h3 { font-family: var(--display); font-weight: 700; font-size: 1.55rem; margin: 0 0 6px }
-  .temps-item p { margin: 0; color: var(--ink-soft) }
-  .num { position: absolute; top: -26px; left: -8px; font-family: var(--hand); font-weight: 700; font-size: 3.2rem; line-height: 1; color: #e03131; transform: rotate(-8deg) }
-  .enonce { transform: rotate(-1.2deg) }
-  .indic { transform: rotate(1.5deg) }
-  .indic h3 { color: #2b2410 }
-  .indic p { color: #4a4020 }
-  .correction { transform: rotate(-0.6deg); border-left: 4px solid #e03131 }
-  .verdict { transform: rotate(1deg) }
-  .mini-tampon { display: inline-block; margin-top: 12px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: #2b8a3e; border: 3px double #2b8a3e; border-radius: 5px; padding: 2px 10px; transform: rotate(-8deg) }
-  .annot { display: inline-block; margin-top: 12px; color: #e03131; font-size: 1.4rem; transform: rotate(-3deg) }
+  .methode-texte { max-width: 44em; margin: -12px 0 30px; font-size: 1.08rem; color: var(--ink-soft) }
+  .methode-cta { margin-top: 26px }
 
-  /* La planche du jour : une copie avec la date écrite à la main. */
-  .du-jour { position: relative; max-width: 760px; padding: 26px 28px 26px 64px; border-top: 6px solid var(--c); transform: rotate(-0.6deg);
-    background-image: linear-gradient(90deg, transparent 40px, #f2a3a3 40px, #f2a3a3 42px, transparent 42px) }
-  .du-jour.mines { --c: #e8871e }
-  .du-jour.centrale { --c: #d6336c }
-  .du-jour.xens { --c: #1d4ed8 }
-  .dj-meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft) }
-  .du-jour .dot { background: var(--c) }
-  .du-jour h3 { margin: 6px 0 2px; font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.1; letter-spacing: -0.02em }
-  .du-jour h3 a { color: var(--ink); text-decoration: none }
-  .dj-chap { margin: 0; font-family: var(--display); font-style: italic; color: var(--ink-soft) }
-  .dj-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin-top: 22px }
-  .dj-date { position: absolute; top: 14px; right: 20px; margin: 0; color: var(--bic); font-size: 1.35rem; transform: rotate(3deg) }
-  @media (max-width: 600px) {
-    .du-jour { padding: 44px 18px 22px 34px; background-image: linear-gradient(90deg, transparent 20px, #f2a3a3 20px, #f2a3a3 22px, transparent 22px) }
-    .dj-date { left: 34px; right: auto; top: 10px; transform: none }
-  }
+  /* La frise : une même copie, tamponnée à chaque passage. */
+  .frise { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(min(44%, 200px), 1fr)); position: relative }
+  .frise li { display: flex; flex-direction: column; gap: 10px }
+  .frise .quand { font-size: 1.7rem; color: var(--bic); line-height: 1 }
+  .mini-copie { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 22px 20px 52px; transform: rotate(-1deg) }
+  .frise li:nth-child(even) .mini-copie { transform: rotate(1.2deg) }
+  .mini-copie i { height: 7px; border-radius: 4px; background: #dfe3f0 }
+  .mini-copie i:nth-child(2) { width: 80% }
+  .mini-copie i:nth-child(3) { width: 55% }
+  .mini-tampon { position: absolute; right: 14px; bottom: 12px; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v); border: 3px double var(--v); border-radius: 5px; padding: 2px 10px; transform: rotate(-9deg) }
+  .rate { --v: #e03131 }
+  .reussi { --v: #2b8a3e }
+  .acquis { --v: #1d3fbf }
+  .acquis .mini-copie { outline: 3px solid color-mix(in srgb, var(--bic) 40%, transparent); outline-offset: 4px }
+
+  /* Les banques : tuiles colorées, filigrane de l'école en fond. */
+  .banques { list-style: none; margin: 0; padding: 0; display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)) }
+  .banque { --c: var(--bic); position: relative; overflow: hidden; display: flex; flex-direction: column; height: 100%; min-height: 220px; color: var(--ink); text-decoration: none; padding: 22px 24px 26px; border: 2px solid var(--ink); border-radius: 14px; background: color-mix(in srgb, var(--c) 13%, var(--paper)); box-shadow: 6px 6px 0 var(--c) }
+  .banque.mines { --c: var(--mines) }
+  .banque.centrale { --c: var(--centrale) }
+  .banque.xens { --c: var(--xens) }
+  .banque > :not(.filigrane) { position: relative }
+  .filigrane { position: absolute; background: var(--c); opacity: 0.22; pointer-events: none; transform: rotate(var(--r, 0deg));
+    -webkit-mask: var(--logo) no-repeat center / contain; mask: var(--logo) no-repeat center / contain }
+  .banque-kicker { margin: 0; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
+  .banque h3 { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1.05; letter-spacing: -0.02em; margin: 4px 0 auto }
+  .voir { margin: 6px 0 0; font-weight: 600; text-decoration: underline wavy var(--c); text-underline-offset: 5px }
+  .filieres { list-style: none; display: flex; gap: 8px; padding: 0; margin: 26px 0 0 }
+  .filieres li { font-weight: 700; font-size: 0.9rem; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper) }
 
   /* L'oral blanc, écrit à la craie sur un tableau noir. */
   .tableau { display: grid; gap: 32px 56px; align-items: center; padding: clamp(28px, 5vw, 56px); color: #f1efe6; border-radius: 14px; border: 10px solid #6b4f34;
@@ -310,18 +429,19 @@ const jour = planches[0];
   /* ---------- Mouvements ---------- */
   @media (prefers-reduced-motion: no-preference) {
     .circled path { stroke-dashoffset: 1; animation: trace 0.9s 0.5s ease-out forwards }
-    .planche { animation: poser 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both }
-    .indication { animation: coller 0.6s 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both }
+    .planche-jour { animation: poser 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both }
+    .pj-postit { animation: coller 0.6s 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both }
     .rec { animation: pulse 1.2s ease-in-out infinite }
     .ruban-track { animation: defile 60s linear infinite }
     .banque { transition: transform 0.2s ease, box-shadow 0.2s ease }
     .banque:hover { transform: translate(-3px, -3px) rotate(-0.6deg); box-shadow: 10px 10px 0 var(--c) }
-    .temps-item { transition: transform 0.2s ease }
-    .temps-item:hover { transform: rotate(0deg) translateY(-4px) }
+    .bord.moi:not([hidden]) { animation: poser 0.5s ease both }
+    .frise .mini-tampon { animation: tamponner 0.4s cubic-bezier(0.3, 1.4, 0.5, 1) both; animation-timeline: view(); animation-range: entry 40% cover 40% }
   }
   @keyframes trace { to { stroke-dashoffset: 0 } }
-  @keyframes poser { from { opacity: 0; transform: translateY(24px) rotate(-7deg) } }
+  @keyframes poser { from { opacity: 0; transform: translateY(24px) rotate(-5deg) } }
   @keyframes coller { from { opacity: 0; transform: translateY(-18px) rotate(14deg) scale(1.08) } }
   @keyframes pulse { 50% { opacity: 0.25 } }
   @keyframes defile { to { transform: translateX(-50%) } }
+  @keyframes tamponner { from { opacity: 0; transform: rotate(-30deg) scale(2.2) } }
 </style>

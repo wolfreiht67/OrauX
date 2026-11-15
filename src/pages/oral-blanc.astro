@@ -69,7 +69,7 @@ const planches = (await tousLesExercices()).map(resume);
 </Base>
 
 <script>
-  import { lire } from '../scripts/cahier';
+  import { lire, lireProfil } from '../scripts/cahier';
   import type { Resume } from '../data/exercices';
 
   const planches: Resume[] = JSON.parse(document.getElementById('planches')!.textContent!);
@@ -100,6 +100,9 @@ const planches = (await tousLesExercices()).map(resume);
   }
   // On peut arriver avec des réglages dans l'adresse : /oral-blanc?banque=X-ENS&filiere=MP
   const depart = new URLSearchParams(location.search);
+  const profil = lireProfil();
+  if (!depart.has('filiere') && profil.filiere) depart.set('filiere', profil.filiere);
+  if (!depart.has('banque') && profil.concours.length === 1) depart.set('banque', profil.concours[0]);
   for (const nom of ['banque', 'filiere']) {
     const champ = form.querySelector<HTMLInputElement>(`input[name="${nom}"][value="${CSS.escape(depart.get(nom) ?? '')}"]`);
     if (champ) champ.checked = true;

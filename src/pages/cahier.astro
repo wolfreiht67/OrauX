@@ -33,6 +33,13 @@ const planches = (await tousLesExercices()).map(resume);
         <li class="postit serie"><b id="n-serie">0</b><span id="serie-texte">jour d'affilée</span></li>
       </ul>
 
+      <div class="sheet mention-carte">
+        <p class="m-kicker">Mention</p>
+        <p class="m-nom" id="m-nom">Copie blanche</p>
+        <div class="m-barre" aria-hidden="true"><i id="m-barre"></i></div>
+        <p class="m-suite" id="m-suite"></p>
+      </div>
+
       <section class="bloc" aria-labelledby="cal-titre">
         <h2 id="cal-titre">Mes jours <span class="hand">d'entraînement</span></h2>
         <div class="calendrier-boite">
@@ -64,22 +71,49 @@ const planches = (await tousLesExercices()).map(resume);
       </div>
 
       <section class="bloc" aria-labelledby="revoir-titre">
-        <h2 id="revoir-titre">À <span class="marker">revoir</span></h2>
+        <h2 id="revoir-titre">Mes <span class="marker">révisions</span></h2>
+        <p class="explication">Une planche ratée ou à revoir revient 2 jours plus tard, puis 7, puis 21, tant que vous la réussissez.</p>
         <ul class="a-revoir" id="a-revoir"></ul>
-        <p class="rien" id="rien-a-revoir">Rien à revoir pour l'instant. Bravo !</p>
+        <p class="rien" id="rien-a-revoir">Rien à réviser pour l'instant. Bravo !</p>
       </section>
 
       <p class="remise">
         <button type="button" class="vague effacer" id="effacer">Effacer mon cahier</button>
       </p>
     </div>
+    <section class="bloc" id="profil" aria-labelledby="profil-titre">
+      <h2 id="profil-titre">Mon <span class="marker">profil</span></h2>
+      <form class="sheet profil" id="form-profil">
+        <fieldset>
+          <legend>Filière</legend>
+          {['MP', 'PSI', 'PC'].map((f) => <label class="choix"><input type="radio" name="filiere" value={f} /><span class="puce">{f}</span></label>)}
+        </fieldset>
+        <fieldset>
+          <legend>Concours visés</legend>
+          {banques.map((b) => <label class="choix"><input type="checkbox" name="concours" value={b.nom} /><span class="puce">{b.nom}</span></label>)}
+        </fieldset>
+        <div class="ligne">
+          <label>Objectif
+            <select name="objectif">
+              {[1, 2, 3, 4, 5, 7, 10].map((n) => <option value={n}>{n} planche{n > 1 && 's'} par semaine</option>)}
+            </select>
+          </label>
+          <label>Date de mon premier oral
+            <input type="date" name="oral" />
+          </label>
+        </div>
+        <p class="enregistre hand" id="enregistre" aria-live="polite"></p>
+      </form>
+    </section>
   </section>
 
   <script type="application/json" id="planches" set:html={JSON.stringify(planches)} />
 </Base>
 
 <script>
-  import { lire, effacer, serie, aujourdhui, VERDICTS } from '../scripts/cahier';
+  import {
+    lire, effacer, serie, aujourdhui, joliJour, joliTemps, mention, lireProfil, ecrireProfil, VERDICTS, type Filiere,
+  } from '../scripts/cahier';
   import type { Resume } from '../data/exercices';
 
   const planches: Resume[] = JSON.parse(document.getElementById('planches')!.textContent!);
@@ -101,6 +135,16 @@ const planches = (await tousLesExercices()).map(resume);
     $('n-reussi').textContent = String(faites.filter((p) => verdict(p) === 'reussi').length);
     const aRevoir = faites.filter((p) => verdict(p) === 'revoir' || verdict(p) === 'rate');
     $('n-revoir').textContent = String(aRevoir.length);
+
+    // La mention, et ce qui manque pour la suivante.
+    const reussies = faites.filter((p) => verdict(p) === 'reussi').length;
+    const m = mention(reussies);
+    $('m-nom').textContent = m.actuelle.nom;
+    ($('m-barre') as HTMLElement).style.width = m.suivante
+      ? `${(100 * (reussies - m.actuelle.seuil)) / (m.suivante.seuil - m.actuelle.seuil)}%` : '100%';
+    $('m-suite').textContent = m.suivante
+      ? `Encore ${m.suivante.seuil - reussies} planche${m.suivante.seuil - reussies > 1 ? 's' : ''} réussie${m.suivante.seuil - reussies > 1 ? 's' : ''} pour « ${m.suivante.nom} ».`
+      : 'La plus haute mention. Le jury est conquis.';
     const n = serie(cahier.jours);
     $('n-serie').textContent = String(n);
     $('serie-texte').textContent = n > 1 ? "jours d'affilée" : "jour d'affilée";
@@ -143,18 +187,23 @@ const planches = (await tousLesExercices()).map(resume);
       })
       .join('');
 
-    // À revoir.
-    $('a-revoir').innerHTML = aRevoir
-      .map(
-        (p) => `<li class="sheet ${p.cle}">
-          <span class="v-${verdict(p)}">${VERDICTS[verdict(p)!]}</span>
+    // Les révisions programmées, de la plus urgente à la plus lointaine.
+    const revisions = faites
+      .filter((p) => cahier.planches[p.id].revision)
+      .sort((a, b) => cahier.planches[a.id].revision!.localeCompare(cahier.planches[b.id].revision!));
+    $('a-revoir').innerHTML = revisions
+      .map((p) => {
+        const e = cahier.planches[p.id];
+        const due = e.revision! <= aujourdhui();
+        return `<li class="sheet ${p.cle}${due ? ' due' : ''}">
+          <span class="quand-rev">${due ? "À réviser aujourd'hui" : `Revient le ${joliJour(e.revision!)}`}</span>
           <a class="titre" href="/exercices/${p.id}">${echapper(p.titre)}</a>
-          <small>${echapper(`${p.banque} · ${p.filiere} · ${p.chapitre}`)}</small>
-          <a class="retenter" href="/exercices/${p.id}?oral=1">Retenter en oral blanc →</a>
-        </li>`,
-      )
+          <small>${echapper(`${p.banque} · ${p.filiere} · ${p.chapitre}`)}${e.verdict ? ` · <span class="v-${e.verdict}">${VERDICTS[e.verdict]}</span>` : ''}${e.temps ? ` · ${joliTemps(e.temps)}` : ''}</small>
+          ${due ? `<a class="retenter" href="/exercices/${p.id}?oral=1">Réviser en oral blanc →</a>` : ''}
+        </li>`;
+      })
       .join('');
-    $('rien-a-revoir').hidden = aRevoir.length > 0;
+    $('rien-a-revoir').hidden = revisions.length > 0;
   }
 
   // Effacer le cahier demande deux clics, pour éviter les accidents.
@@ -172,6 +221,25 @@ const planches = (await tousLesExercices()).map(resume);
   });
 
   afficher();
+
+  // ---------- Le profil : enregistré dès qu'on change un champ ----------
+  const form = $('form-profil') as HTMLFormElement;
+  const profil = lireProfil();
+  form.querySelectorAll<HTMLInputElement>('input[name="filiere"]').forEach((i) => (i.checked = i.value === profil.filiere));
+  form.querySelectorAll<HTMLInputElement>('input[name="concours"]').forEach((i) => (i.checked = profil.concours.includes(i.value)));
+  (form.elements.namedItem('objectif') as HTMLSelectElement).value = String(profil.objectif);
+  (form.elements.namedItem('oral') as HTMLInputElement).value = profil.oral ?? '';
+  form.addEventListener('change', () => {
+    const f = new FormData(form);
+    ecrireProfil({
+      filiere: (f.get('filiere') as Filiere) || undefined,
+      concours: f.getAll('concours').map(String),
+      objectif: Number(f.get('objectif')),
+      oral: String(f.get('oral') ?? '') || undefined,
+    });
+    $('enregistre').textContent = 'Enregistré ✓';
+    setTimeout(() => ($('enregistre').textContent = ''), 2000);
+  });
 </script>
 
 <style>
@@ -244,6 +312,33 @@ const planches = (await tousLesExercices()).map(resume);
   .a-revoir :global(.v-revoir) { color: #d9480f }
   .a-revoir :global(.v-rate) { color: #e03131 }
   .rien { margin: 0; color: var(--ink-soft) }
+  .explication { margin: -8px 0 18px; color: var(--ink-soft) }
+  .a-revoir :global(.quand-rev) { align-self: flex-start; margin-bottom: 6px; font-family: var(--hand); font-weight: 700; font-size: 1.25rem; color: var(--bic) }
+  .a-revoir :global(li.due) { outline: 3px solid var(--red); outline-offset: 3px }
+  .a-revoir :global(li.due .quand-rev) { color: var(--red) }
+
+  /* La mention : un bulletin avec la barre jusqu'à la prochaine. */
+  .mention-carte { margin-top: 22px; padding: 18px 22px 20px; max-width: 520px; transform: rotate(-0.5deg) }
+  .m-kicker { margin: 0; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
+  .m-nom { margin: 2px 0 10px; font-family: var(--hand); font-weight: 700; font-size: 2.4rem; line-height: 1; color: var(--red); transform: rotate(-2deg); display: inline-block }
+  .m-barre { height: 10px; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden }
+  .m-barre i { display: block; height: 100%; background: var(--red); transition: width 0.6s ease }
+  .m-suite { margin: 8px 0 0; font-size: 0.9rem; color: var(--ink-soft) }
+
+  /* Le profil. */
+  .profil { display: flex; flex-direction: column; gap: 16px; max-width: 640px; padding: 22px }
+  .profil fieldset { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0 }
+  .profil legend, .profil label { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft) }
+  .profil legend { float: left; width: 100%; margin-bottom: 6px }
+  .profil .choix { position: relative; cursor: pointer; font-size: 0.9rem; letter-spacing: 0; text-transform: none; color: var(--ink) }
+  .choix input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer }
+  .choix .puce { background: var(--sheet) }
+  .choix input:checked + .puce { color: var(--sheet); background: var(--ink) }
+  .choix input:focus-visible + .puce { outline: 3px solid var(--bic); outline-offset: 2px }
+  .ligne { display: flex; flex-wrap: wrap; gap: 14px 20px }
+  .ligne label { display: flex; flex-direction: column; gap: 6px }
+  .profil select, .profil input[type="date"] { font: inherit; font-size: 0.95rem; letter-spacing: 0; text-transform: none; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 6px 10px }
+  .enregistre { margin: 0; min-height: 1.4em; color: #2b8a3e; font-size: 1.3rem }
 
   .remise { margin-top: 60px }
   .effacer { font: inherit; font-size: 0.9rem; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink-soft) }

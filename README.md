@@ -28,4 +28,7 @@ Les neuf fichiers marqués `exemple: true` sont des exemples écrits pour voir l
 - **Une planche** : chrono de préparation (dans l'onglet aussi), indication sur post-it, correction au rouge, verdict au tampon (réussi, à revoir, raté), bouton d'impression.
 - **Oral blanc** (`/oral-blanc`) : une planche tirée au sort, chrono lancé tout seul, correction sous enveloppe jusqu'à la fin.
 - **Mon cahier** (`/cahier`) : planches travaillées, verdicts, jours d'entraînement d'affilée. Tout reste dans le navigateur de l'élève.
-- **La planche du jour** sur l'accueil, la même pour tout le monde chaque jour.
+- **L'accueil** : la planche du jour en entier (la même pour toute une filière, pour comparer ses temps), le compte à rebours avant les oraux, l'objectif de la semaine, la série, la mention, et les planches à réviser.
+- **Révisions espacées** : une planche ratée ou à revoir revient 2 jours plus tard, puis 7, puis 21.
+- **Défier un ami** : un bouton de partage sur chaque planche (WhatsApp, Messenger…), avec une vignette d'aperçu (`public/og.png`).
+- **Sur téléphone** : le site s'installe comme une application et se lit hors ligne.
